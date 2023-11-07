@@ -37,11 +37,12 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
 
-	fmt.Println("HELLO")
-
 	c.events <- StateChange{CompletedTurns: 0, NewState: Executing}
 
 	var world = make([][]byte, p.ImageHeight)
+	for col := range world {
+		world[col] = make([]byte, p.ImageWidth)
+	}
 	// Start IO image reading
 	filename := fmt.Sprintf("%vx%v", p.ImageWidth, p.ImageHeight)
 	c.ioCommand <- ioInput
@@ -54,19 +55,17 @@ func distributor(p Params, c distributorChannels) {
 		}
 	}
 
-	fmt.Println("Read file!")
-
 	turn := 0
 	for turn = 0; turn < p.Turns; turn++ {
-		fmt.Println("Calculating turn ", turn)
 		// Make new 2D array for the next frame
 		var newFrame [][]uint8
 		workerChannel := make(chan [][]uint8)
-		for i := 0; i < p.Threads; i++ {
+		immutableWorld := makeImmutableWorld(world)
+		for i := 1; i <= p.Threads; i++ {
 			// Divide up the world and send to our workers
-			y1 := i * (p.ImageHeight / p.Threads)
-			y2 := ((i + 1) * (p.ImageHeight / p.Threads))
-			go worker(y1, y2, makeImmutableWorld(world), c.events, workerChannel, p, turn)
+			y1 := (i - 1) * (p.ImageHeight / p.Threads)
+			y2 := i*(p.ImageHeight/p.Threads) - 1
+			go worker(y1, y2, immutableWorld, c.events, workerChannel, p, turn)
 		}
 		for j := 0; j < p.Threads; j++ {
 			// Retrieve the new slices from the workers & append into new frame

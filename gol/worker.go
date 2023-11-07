@@ -1,6 +1,8 @@
 package gol
 
-import "uk.ac.bris.cs/gameoflife/util"
+import (
+	"uk.ac.bris.cs/gameoflife/util"
+)
 
 func getNumNeighbours(x int, y int, world func(y, x int) uint8, p Params) int {
 	numNeighbours := 0
@@ -17,7 +19,7 @@ func getNumNeighbours(x int, y int, world func(y, x int) uint8, p Params) int {
 	return numNeighbours
 }
 
-func setCell(x, y int, world func(y, x int) uint8, newValue uint8, events chan<- Event, turn int) {
+func setCell(y, x int, world func(y, x int) uint8, newValue uint8, events chan<- Event, turn int) {
 	if world(y, x) != newValue {
 		events <- CellFlipped{CompletedTurns: turn, Cell: util.Cell{X: x, Y: y}}
 	}
@@ -34,13 +36,13 @@ func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<
 			neighbours := getNumNeighbours(x, y, world, p)
 			switch {
 			case neighbours < 2:
-				setCell(x, y, world, 0, events, turn)
+				setCell(y, x, world, 0, events, turn)
 				newSlice[y][x] = 0
 			case neighbours == 3:
-				setCell(x, y, world, 255, events, turn)
+				setCell(y, x, world, 255, events, turn)
 				newSlice[y][x] = 255
 			case neighbours > 3:
-				setCell(x, y, world, 0, events, turn)
+				setCell(y, x, world, 0, events, turn)
 				newSlice[y][x] = 0
 			}
 		}
