@@ -34,16 +34,19 @@ func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<
 	for y := y1; y < y2; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
 			neighbours := getNumNeighbours(x, y, world, p)
+			cellValue := world(y, x)
 			switch {
 			case neighbours < 2:
 				setCell(y, x, world, 0, events, turn)
 				newSlice[y][x] = 0
-			case neighbours == 3:
-				setCell(y, x, world, 255, events, turn)
-				newSlice[y][x] = 255
-			case neighbours > 3:
+			case neighbours > 3 && cellValue == 255:
 				setCell(y, x, world, 0, events, turn)
 				newSlice[y][x] = 0
+			case neighbours == 3 && cellValue == 0:
+				setCell(y, x, world, 255, events, turn)
+				newSlice[y][x] = 255
+			default:
+				newSlice[y][x] = cellValue
 			}
 		}
 	}

@@ -34,6 +34,27 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 	return liveCells
 }
 
+func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int) [][]uint8 {
+	// Make new 2D array for the next frame
+	var newFrame [][]uint8
+	workerChannel := make(chan [][]uint8)
+	immutableWorld := makeImmutableWorld(world)
+	for i := 1; i <= p.Threads; i++ {
+		// Divide up the world and send to our workers
+		y1 := (i - 1) * (p.ImageHeight / p.Threads)
+		y2 := i*(p.ImageHeight/p.Threads) - 1
+		go worker(y1, y2, immutableWorld, c.events, workerChannel, p, turn)
+	}
+	for j := 0; j < p.Threads; j++ {
+		// Retrieve the new slices from the workers & append into new frame
+		newSlice := <-workerChannel
+
+		newFrame = append(newFrame, newSlice...)
+	}
+
+	return newFrame
+}
+
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
 
@@ -57,26 +78,7 @@ func distributor(p Params, c distributorChannels) {
 
 	turn := 0
 	for turn = 0; turn < p.Turns; turn++ {
-		// Make new 2D array for the next frame
-		var newFrame [][]uint8
-		workerChannel := make(chan [][]uint8)
-		immutableWorld := makeImmutableWorld(world)
-		for i := 1; i <= p.Threads; i++ {
-			// Divide up the world and send to our workers
-			y1 := (i - 1) * (p.ImageHeight / p.Threads)
-			y2 := i*(p.ImageHeight/p.Threads) - 1
-			go worker(y1, y2, immutableWorld, c.events, workerChannel, p, turn)
-		}
-		for j := 0; j < p.Threads; j++ {
-			// Retrieve the new slices from the workers & append into new frame
-			newSlice := <-workerChannel
-			newFrame = append(newFrame, newSlice...)
-		}
-		// Overwrite the world with our new frame
-		for col := range newFrame {
-			copy(newFrame[col], world[col])
-		}
-
+		world = calculateNewState(p, c, world, turn)
 		// c.events <- TurnComplete{CompletedTurns: turn}
 	}
 
