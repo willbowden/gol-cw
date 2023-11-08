@@ -38,15 +38,15 @@ func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<
 			switch {
 			case neighbours < 2:
 				setCell(y, x, world, 0, events, turn)
-				newSlice[y][x] = 0
+				newSlice[y-y1][x] = 0
 			case neighbours > 3 && cellValue == 255:
 				setCell(y, x, world, 0, events, turn)
-				newSlice[y][x] = 0
+				newSlice[y-y1][x] = 0
 			case neighbours == 3 && cellValue == 0:
 				setCell(y, x, world, 255, events, turn)
-				newSlice[y][x] = 255
+				newSlice[y-y1][x] = 255
 			default:
-				newSlice[y][x] = cellValue
+				newSlice[y-y1][x] = cellValue
 			}
 		}
 	}
