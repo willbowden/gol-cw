@@ -115,12 +115,13 @@ func distributor(p Params, c distributorChannels) {
 	quit := false
 	for turn = 0; turn < p.Turns && !quit; turn++ {
 		go calculateNewState(p, c, world, turn, newFrames)
+	next:
 		for !quit {
 			select {
 			case nextFrame := <-newFrames:
 				world = nextFrame
 				c.events <- TurnComplete{CompletedTurns: turn}
-				break
+				break next
 			case key := <-c.keyPresses:
 				switch key {
 				case 'q':
@@ -136,7 +137,7 @@ func distributor(p Params, c distributorChannels) {
 						case nextKey := <-c.keyPresses:
 							if nextKey == 'p' {
 								c.events <- StateChange{CompletedTurns: turn, NewState: Executing}
-								break
+								break next
 							}
 						}
 					}
