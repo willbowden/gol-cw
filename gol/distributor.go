@@ -78,6 +78,16 @@ func writeImage(c distributorChannels, filename string, world [][]uint8, p Param
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
 }
 
+func handlePause(c distributorChannels, turn int) {
+	select {
+	case nextKey := <-c.keyPresses:
+		if nextKey == 'p' {
+			c.events <- StateChange{CompletedTurns: turn, NewState: Executing}
+			return
+		}
+	}
+}
+
 // distributor divides the work between workers and interacts with other goroutines.
 func distributor(p Params, c distributorChannels) {
 
@@ -115,33 +125,23 @@ func distributor(p Params, c distributorChannels) {
 	quit := false
 	for turn = 0; turn < p.Turns && !quit; turn++ {
 		go calculateNewState(p, c, world, turn, newFrames)
-	next:
-		for !quit {
-			select {
-			case nextFrame := <-newFrames:
-				world = nextFrame
-				c.events <- TurnComplete{CompletedTurns: turn}
-				break next
-			case key := <-c.keyPresses:
-				switch key {
-				case 'q':
-					quit = true
-					c.events <- StateChange{CompletedTurns: turn, NewState: Quitting}
-					break
-				case 's':
-					writeImage(c, outFilename, world, p, turn)
-				case 'p':
-					c.events <- StateChange{CompletedTurns: turn, NewState: Paused}
-					for {
-						select {
-						case nextKey := <-c.keyPresses:
-							if nextKey == 'p' {
-								c.events <- StateChange{CompletedTurns: turn, NewState: Executing}
-								break next
-							}
-						}
-					}
-				}
+		select {
+		case nextFrame := <-newFrames:
+			world = nextFrame
+			c.events <- TurnComplete{CompletedTurns: turn}
+			break
+		case key := <-c.keyPresses:
+			switch key {
+			case 'q':
+				quit = true
+				c.events <- StateChange{CompletedTurns: turn, NewState: Quitting}
+				break
+			case 's':
+				writeImage(c, outFilename, world, p, turn)
+			case 'p':
+				c.events <- StateChange{CompletedTurns: turn, NewState: Paused}
+				handlePause(c, turn)
+				fmt.Println("Continuing")
 			}
 		}
 	}
