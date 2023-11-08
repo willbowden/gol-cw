@@ -88,9 +88,9 @@ func distributor(p Params, c distributorChannels) {
 	}
 
 	turn := 0
+	ticker := time.NewTicker(200 * time.Millisecond)
 	for turn = 0; turn < p.Turns; turn++ {
 		world = calculateNewState(p, c, world, turn)
-		ticker := time.NewTicker(200 * time.Millisecond)
 		go func() {
 			for {
 				select {
@@ -100,6 +100,16 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}()
 		c.events <- TurnComplete{CompletedTurns: turn}
+	}
+
+	ticker.Stop()
+	outFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, p.Turns)
+	c.ioCommand <- ioOutput
+	c.ioFilename <- outFilename
+	for y := 0; y < p.ImageHeight; y++ {
+		for x := 0; x < p.ImageWidth; x++ {
+			c.ioOutput <- world[y][x]
+		}
 	}
 
 	liveCells := calculateAliveCells(p, world)
