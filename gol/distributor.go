@@ -37,23 +37,28 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int) [][]uint8 {
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
-	workerChannel := make(chan [][]uint8)
+	channels := make([]chan [][]uint8, p.Threads)
+	for v := range channels {
+		channels[v] = make(chan [][]uint8)
+	}
 	immutableWorld := makeImmutableWorld(world)
 	sliceSize := p.ImageHeight / p.Threads
 	remainder := p.ImageHeight % p.Threads
-	for i := 1; i <= p.Threads; i++ {
-		// Divide up the world and send to our workers
+
+	for i, channel := range channels {
+		i += 1
 		y1 := (i - 1) * sliceSize
 		y2 := (i * sliceSize) - 1
 		if i == p.Threads {
 			y2 += remainder
 		}
-		go worker(y1, y2, immutableWorld, c.events, workerChannel, p, turn)
-	}
-	for j := 0; j < p.Threads; j++ {
-		// Retrieve the new slices from the workers & append into new frame
-		newSlice := <-workerChannel
+		go worker(y1, y2, immutableWorld, c.events, channel, p, turn)
 
+	}
+
+	for _, channel := range channels {
+		// Retrieve the new slices from the workers & append into new frame
+		newSlice := <-channel
 		newFrame = append(newFrame, newSlice...)
 	}
 
