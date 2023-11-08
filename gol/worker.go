@@ -4,7 +4,7 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
-func getNumNeighbours(x int, y int, world func(y, x int) uint8, p Params) int {
+func getNumNeighbours(x, y int, world func(y, x int) uint8, p Params) int {
 	numNeighbours := 0
 	for yInc := -1; yInc <= 1; yInc++ {
 		var testY int = (y + yInc + p.ImageHeight) % p.ImageHeight
@@ -31,7 +31,7 @@ func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<
 	for i := 0; i < sliceHeight; i++ {
 		newSlice[i] = make([]uint8, p.ImageWidth)
 	}
-	for y := y1; y < y2; y++ {
+	for y := y1; y <= y2; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
 			neighbours := getNumNeighbours(x, y, world, p)
 			cellValue := world(y, x)
