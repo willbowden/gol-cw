@@ -14,6 +14,7 @@ type distributorChannels struct {
 	ioFilename chan<- string
 	ioOutput   chan<- uint8
 	ioInput    <-chan uint8
+	keyPresses <-chan rune
 }
 
 func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
@@ -35,7 +36,7 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 	return liveCells
 }
 
-func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int) [][]uint8 {
+func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int, ch chan<- [][]uint8) {
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
 	channels := make([]chan [][]uint8, p.Threads)
@@ -63,7 +64,18 @@ func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn in
 		newFrame = append(newFrame, newSlice...)
 	}
 
-	return newFrame
+	ch <- newFrame
+}
+
+func writeImage(c distributorChannels, filename string, world [][]uint8, p Params, turn int) {
+	c.ioCommand <- ioOutput
+	c.ioFilename <- filename
+	for y := 0; y < p.ImageHeight; y++ {
+		for x := 0; x < p.ImageWidth; x++ {
+			c.ioOutput <- world[y][x]
+		}
+	}
+	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
@@ -88,29 +100,53 @@ func distributor(p Params, c distributorChannels) {
 	}
 
 	turn := 0
-	ticker := time.NewTicker(200 * time.Millisecond)
-	for turn = 0; turn < p.Turns; turn++ {
-		world = calculateNewState(p, c, world, turn)
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					c.events <- AliveCellsCount{turn, len(calculateAliveCells(p, world))}
+	ticker := time.NewTicker(2000 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				c.events <- AliveCellsCount{turn, len(calculateAliveCells(p, world))}
+			}
+		}
+	}()
+
+	outFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, p.Turns)
+	newFrames := make(chan [][]uint8)
+	quit := false
+	for turn = 0; turn < p.Turns && !quit; turn++ {
+		go calculateNewState(p, c, world, turn, newFrames)
+		for !quit {
+			select {
+			case nextFrame := <-newFrames:
+				world = nextFrame
+				c.events <- TurnComplete{CompletedTurns: turn}
+				break
+			case key := <-c.keyPresses:
+				switch key {
+				case 'q':
+					quit = true
+					c.events <- StateChange{CompletedTurns: turn, NewState: Quitting}
+					break
+				case 's':
+					writeImage(c, outFilename, world, p, turn)
+				case 'p':
+					c.events <- StateChange{CompletedTurns: turn, NewState: Paused}
+					for {
+						select {
+						case nextKey := <-c.keyPresses:
+							if nextKey == 'p' {
+								c.events <- StateChange{CompletedTurns: turn, NewState: Executing}
+								break
+							}
+						}
+					}
 				}
 			}
-		}()
-		c.events <- TurnComplete{CompletedTurns: turn}
+		}
 	}
 
 	ticker.Stop()
-	outFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, p.Turns)
-	c.ioCommand <- ioOutput
-	c.ioFilename <- outFilename
-	for y := 0; y < p.ImageHeight; y++ {
-		for x := 0; x < p.ImageWidth; x++ {
-			c.ioOutput <- world[y][x]
-		}
-	}
+	writeImage(c, outFilename, world, p, turn)
 
 	liveCells := calculateAliveCells(p, world)
 	c.events <- FinalTurnComplete{CompletedTurns: turn, Alive: liveCells}
