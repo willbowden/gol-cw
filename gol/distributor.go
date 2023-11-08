@@ -39,10 +39,15 @@ func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn in
 	var newFrame [][]uint8
 	workerChannel := make(chan [][]uint8)
 	immutableWorld := makeImmutableWorld(world)
+	sliceSize := p.ImageHeight / p.Threads
+	remainder := p.ImageHeight % p.Threads
 	for i := 1; i <= p.Threads; i++ {
 		// Divide up the world and send to our workers
-		y1 := (i - 1) * (p.ImageHeight / p.Threads)
-		y2 := i*(p.ImageHeight/p.Threads) - 1
+		y1 := (i - 1) * sliceSize
+		y2 := (i * sliceSize) - 1
+		if i == p.Threads {
+			y2 += remainder
+		}
 		go worker(y1, y2, immutableWorld, c.events, workerChannel, p, turn)
 	}
 	for j := 0; j < p.Threads; j++ {
