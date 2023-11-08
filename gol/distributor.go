@@ -129,13 +129,11 @@ func distributor(p Params, c distributorChannels) {
 		case nextFrame := <-newFrames:
 			world = nextFrame
 			c.events <- TurnComplete{CompletedTurns: turn}
-			break
 		case key := <-c.keyPresses:
 			switch key {
 			case 'q':
 				quit = true
 				c.events <- StateChange{CompletedTurns: turn, NewState: Quitting}
-				break
 			case 's':
 				writeImage(c, outFilename, world, p, turn)
 			case 'p':
