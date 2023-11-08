@@ -2,6 +2,7 @@ package gol
 
 import (
 	"fmt"
+	"time"
 
 	"uk.ac.bris.cs/gameoflife/util"
 )
@@ -89,7 +90,16 @@ func distributor(p Params, c distributorChannels) {
 	turn := 0
 	for turn = 0; turn < p.Turns; turn++ {
 		world = calculateNewState(p, c, world, turn)
-		// c.events <- TurnComplete{CompletedTurns: turn}
+		ticker := time.NewTicker(200 * time.Millisecond)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					c.events <- AliveCellsCount{turn, len(calculateAliveCells(p, world))}
+				}
+			}
+		}()
+		c.events <- TurnComplete{CompletedTurns: turn}
 	}
 
 	liveCells := calculateAliveCells(p, world)
