@@ -26,6 +26,7 @@ func Run(p Params, events chan<- Event, keyPresses <-chan rune) {
 	}
 	go startIo(p, ioChannels)
 
+	// Added keyPresses channel to distributor channels for input handling
 	distributorChannels := distributorChannels{
 		events:     events,
 		ioCommand:  ioCommand,
