@@ -8,7 +8,7 @@ import (
 	"net/rpc"
 	"os"
 
-	"uk.ac.bris.cs/distributed2/secretstrings/stubs"
+	"uk.ac.bris.cs/gameoflife/secretstrings/stubs"
 )
 
 func main() {
