@@ -7,5 +7,6 @@ type Response struct {
 }
 
 type Request struct {
-	Turns int
+	Turns        int
+	CurrentState [][]uint8
 }
