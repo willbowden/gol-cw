@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -13,9 +12,6 @@ import (
 const benchLength = 1000
 
 func BenchmarkGol(b *testing.B) {
-	var buf bytes.Buffer
-	originalStdout := os.Stdout
-
 	// 1 to 16 threads / workers
 	for threads := 1; threads <= 16; threads++ {
 
@@ -40,7 +36,5 @@ func BenchmarkGol(b *testing.B) {
 				}
 			}
 		})
-
-		os.Stdout = originalStdout
 	}
 }
