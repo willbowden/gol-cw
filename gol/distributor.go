@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/rpc"
 
-	"../stubs"
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
@@ -77,11 +76,3 @@ func distributor(p Params, c distributorChannels) {
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
 }
-package gol
-
-import (
-	"fmt"
-	"uk.ac.bris.cs/gameoflife/util"
-)
-
-

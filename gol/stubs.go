@@ -1,4 +1,4 @@
-package stubs
+package gol
 
 var ProcessTurns = "Gol.ProcessTurns"
 
