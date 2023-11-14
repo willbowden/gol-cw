@@ -2,27 +2,26 @@ package gol
 
 import (
 	//	"errors"
-	"flag"
+
 	"net/rpc"
 
 	//	"fmt"
-	"math/rand"
-	"net"
-	"time"
 
-	"uk.ac.bris.cs/gameoflife/secretstrings/stubs"
+	"net"
 )
 
 // GOL Logic as in Parallel Implementation
 
-func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int, ch chan<- [][]uint8) {
+func calculateNewState(p Params, world [][]uint8, turn int, ch chan<- [][]uint8) {
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
 	immutableWorld := makeImmutableWorld(world)
 
-	go worker(0, p.ImageHeight, immutableWorld, c.events, channel, p, turn)
+	ch_out := make(chan [][]uint8)
 
-	newSlice := <-channel
+	go worker(0, p.ImageHeight, immutableWorld, ch_out, p, turn)
+
+	newSlice := <-ch_out
 	newFrame = append(newFrame, newSlice...)
 
 	// Send complete new frame to distributor
@@ -37,21 +36,21 @@ func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
-func engine(turns int, startState [][]uint8) [][]uint8 {
+func engine(p Params, state [][]uint8) [][]uint8 {
 
 	// Channel to receive new state output from workers
 	newFrames := make(chan [][]uint8)
 
-	for turn := 0; turn < turns; turns++ {
+	for turn := 0; turn < p.Turns; turn++ {
 		// Start calculation of next frame
-		go calculateNewState(p, c, world, turn, newFrames)
+		go calculateNewState(p, state, turn, newFrames)
 		// Await reception from channels
 		nextFrame := <-newFrames
-		world = nextFrame
+		state = nextFrame
 
 	}
 
-	return world
+	return state
 
 }
 
@@ -59,19 +58,18 @@ func engine(turns int, startState [][]uint8) [][]uint8 {
 
 type Gol struct{}
 
-func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
-	res.State = engine(req.Turns, req.CurrentState)
+func (g *Gol) ProcessTurns(req Request, res *Response) (err error) {
+	res.State = engine(req.Params, req.CurrentState)
 	return
 
 }
 
 // Server Handling
-func main() {
-	pAddr := flag.String("port", "8030", "Port to listen on")
-	flag.Parse()
-	rand.Seed(time.Now().UnixNano())
+func startEngine() {
+	// pAddr := flag.String("port", "8030", "Port to listen on")
+	// flag.Parse()
 	rpc.Register(&Gol{})
-	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	listener, _ := net.Listen("tcp", ":8030")
 	defer listener.Close()
 	rpc.Accept(listener)
 }

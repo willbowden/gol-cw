@@ -7,6 +7,6 @@ type Response struct {
 }
 
 type Request struct {
-	Turns        int
+	Params       Params
 	CurrentState [][]uint8
 }
