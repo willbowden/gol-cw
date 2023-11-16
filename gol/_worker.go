@@ -1,9 +1,5 @@
 package gol
 
-import (
-	"uk.ac.bris.cs/gameoflife/util"
-)
-
 // calculate number of neighbours around a cell at given coords, wrapping around world edges
 func getNumNeighbours(y, x int, world func(y, x int) uint8, p Params) int {
 	numNeighbours := 0
@@ -24,11 +20,11 @@ func getNumNeighbours(y, x int, world func(y, x int) uint8, p Params) int {
 // setCell() checks if a cell's new value is different to its current one, and if so, sends an event
 //
 //	so that the screen renders the change
-func setCell(y, x int, world func(y, x int) uint8, newValue uint8, events chan<- Event, turn int) {
-	if world(y, x) != newValue {
-		events <- CellFlipped{CompletedTurns: turn, Cell: util.Cell{X: x, Y: y}}
-	}
-}
+// func setCell(y, x int, world func(y, x int) uint8, newValue uint8, events chan<- Event, turn int) {
+// 	if world(y, x) != newValue {
+// 		events <- CellFlipped{CompletedTurns: turn, Cell: util.Cell{X: x, Y: y}}
+// 	}
+// }
 
 // worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
 func worker(y1, y2 int, world func(y, x int) uint8, c chan<- [][]uint8, p Params, turn int) {

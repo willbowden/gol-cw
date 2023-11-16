@@ -1,6 +1,13 @@
-package gol
+package stubs
 
 var ProcessTurns = "Gol.ProcessTurns"
+
+type Params struct {
+	Turns       int
+	Threads     int
+	ImageWidth  int
+	ImageHeight int
+}
 
 type Response struct {
 	State [][]uint8

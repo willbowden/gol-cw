@@ -1,9 +1,11 @@
 package gol
 
 import (
+	"flag"
 	"fmt"
 	"net/rpc"
 
+	"uk.ac.bris.cs/gameoflife/stubs"
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
@@ -32,10 +34,10 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 
 // distributor acts as the local controller
 func distributor(p Params, c distributorChannels) {
-	// server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
-	// flag.Parse()
-	// fmt.Println("Server: ", *server)
-	client, _ := rpc.Dial("tcp", "127.0.0.1:8030")
+	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
+	flag.Parse()
+	fmt.Println("Server: ", *server)
+	client, _ := rpc.Dial("tcp", *server)
 	defer client.Close()
 
 	// Create a 2D slice to store the world.
@@ -59,10 +61,10 @@ func distributor(p Params, c distributorChannels) {
 
 	// Execute all turns of the Game of Life.
 
-	request := Request{Params: p, CurrentState: world}
-	response := new(Response)
+	request := stubs.Request{Params: stubs.Params(p), CurrentState: world}
+	response := new(stubs.Response)
 
-	client.Call(ProcessTurns, request, response)
+	client.Call(stubs.ProcessTurns, request, response)
 
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, response.State)}
 
