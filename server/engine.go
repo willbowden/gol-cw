@@ -76,6 +76,7 @@ func calculateNewState(p stubs.Params, world [][]uint8, turn int, ch chan<- [][]
 	newFrame = append(newFrame, newSlice...)
 
 	// Wait for the worker goroutine to finish
+
 	ch <- newFrame
 
 	// Send complete new frame to distributor
@@ -94,9 +95,10 @@ func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 	// Channel to receive new state output from workers
 	newFrames := make(chan [][]uint8)
 
-	for turn := 0; turn <= p.Turns; turn++ {
+	for turn := 0; turn < p.Turns; turn++ {
 		go calculateNewState(p, state, turn, newFrames)
 		state = <-newFrames
+
 	}
 
 	return state
