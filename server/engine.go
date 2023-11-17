@@ -34,7 +34,7 @@ func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int 
 
 // worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
 func worker(y1, y2 int, world func(y, x int) uint8, c chan<- [][]uint8, p stubs.Params, turn int) {
-	sliceHeight := y2
+	sliceHeight := (y2 - y1) + 1
 	var newSlice = make([][]uint8, sliceHeight)
 	for i := 0; i < sliceHeight; i++ {
 		newSlice[i] = make([]uint8, p.ImageWidth)
@@ -78,8 +78,6 @@ func calculateNewState(p stubs.Params, world [][]uint8, turn int, ch chan<- [][]
 	// Wait for the worker goroutine to finish
 	ch <- newFrame
 
-	close(ch_out)
-
 	// Send complete new frame to distributor
 }
 
@@ -98,12 +96,8 @@ func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 
 	for turn := 0; turn <= p.Turns; turn++ {
 		go calculateNewState(p, state, turn, newFrames)
+		state = <-newFrames
 	}
-
-	for i := 1; i < p.Turns; i++ {
-		<-newFrames
-	}
-	close(newFrames)
 
 	return state
 
