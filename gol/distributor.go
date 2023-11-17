@@ -1,7 +1,6 @@
 package gol
 
 import (
-	"flag"
 	"fmt"
 	"net/rpc"
 
@@ -34,10 +33,8 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 
 // distributor acts as the local controller
 func distributor(p Params, c distributorChannels) {
-	server := flag.String("server", "127.0.0.1:8030", "IP:port string to connect to as server")
-	flag.Parse()
-	fmt.Println("Server: ", *server)
-	client, _ := rpc.Dial("tcp", *server)
+	flag_server := "127.0.0.1:8030"
+	client, _ := rpc.Dial("tcp", flag_server)
 	defer client.Close()
 
 	// Create a 2D slice to store the world.
@@ -61,11 +58,9 @@ func distributor(p Params, c distributorChannels) {
 
 	// Execute all turns of the Game of Life.
 
-	request := stubs.Request{Params: stubs.Params(p), CurrentState: world}
+	request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
 	response := new(stubs.Response)
-
 	client.Call(stubs.ProcessTurns, request, response)
-
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, response.State)}
 
 	// Make sure that the Io has finished any output before exiting.

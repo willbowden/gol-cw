@@ -1,7 +1,7 @@
 package main
 
 import (
-	//	"errors"
+	//"errors"
 
 	"flag"
 	"fmt"
@@ -34,7 +34,7 @@ func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int 
 
 // worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
 func worker(y1, y2 int, world func(y, x int) uint8, c chan<- [][]uint8, p stubs.Params, turn int) {
-	sliceHeight := (y2 - y1) + 1
+	sliceHeight := y2
 	var newSlice = make([][]uint8, sliceHeight)
 	for i := 0; i < sliceHeight; i++ {
 		newSlice[i] = make([]uint8, p.ImageWidth)
@@ -75,8 +75,12 @@ func calculateNewState(p stubs.Params, world [][]uint8, turn int, ch chan<- [][]
 	newSlice := <-ch_out
 	newFrame = append(newFrame, newSlice...)
 
-	// Send complete new frame to distributor
+	// Wait for the worker goroutine to finish
 	ch <- newFrame
+
+	close(ch_out)
+
+	// Send complete new frame to distributor
 }
 
 // Returns a function allowing us to access data without risk of overwriting
@@ -92,14 +96,14 @@ func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 	// Channel to receive new state output from workers
 	newFrames := make(chan [][]uint8)
 
-	for turn := 0; turn < p.Turns; turn++ {
-		// Start calculation of next frame
+	for turn := 0; turn <= p.Turns; turn++ {
 		go calculateNewState(p, state, turn, newFrames)
-		// Await reception from channels
-		nextFrame := <-newFrames
-		state = nextFrame
-
 	}
+
+	for i := 1; i < p.Turns; i++ {
+		<-newFrames
+	}
+	close(newFrames)
 
 	return state
 
@@ -109,7 +113,9 @@ func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 
 type Gol struct{}
 
+// calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
+	// get new state : set for response state
 	res.State = engine(req.Params, req.CurrentState)
 	return
 
@@ -123,5 +129,6 @@ func main() {
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
+	// boilerplate for registering type Gol -> we can use Gol methods
 	rpc.Accept(listener)
 }
