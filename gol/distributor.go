@@ -61,7 +61,7 @@ func distributor(p Params, c distributorChannels) {
 	request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
 	response := new(stubs.Response)
 	client.Call(stubs.ProcessTurns, request, response)
-	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, request.CurrentState)}
+	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, response.State)}
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle

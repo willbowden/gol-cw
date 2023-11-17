@@ -70,7 +70,7 @@ func calculateNewState(p stubs.Params, world [][]uint8, turn int, ch chan<- [][]
 
 	ch_out := make(chan [][]uint8)
 
-	go worker(0, p.ImageHeight, immutableWorld, ch_out, p, turn)
+	go worker(0, p.ImageHeight-1, immutableWorld, ch_out, p, turn)
 
 	newSlice := <-ch_out
 	newFrame = append(newFrame, newSlice...)
@@ -94,7 +94,6 @@ func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 
 	// Channel to receive new state output from workers
 	newFrames := make(chan [][]uint8)
-
 	for turn := 0; turn < p.Turns; turn++ {
 		go calculateNewState(p, state, turn, newFrames)
 		state = <-newFrames
