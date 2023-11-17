@@ -15,7 +15,8 @@ type Response struct {
 }
 
 type CellCount struct {
-	Cells int
+	Turn       int
+	CellsCount int
 }
 
 type Request struct {

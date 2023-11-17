@@ -65,6 +65,7 @@ func distributor(p Params, c distributorChannels) {
 				request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
 				response := new(stubs.CellCount)
 				client.Call(stubs.AliveCellsCount, request, response)
+				c.events <- AliveCellsCount{CompletedTurns: response.Turn, CellsCount: response.CellsCount}
 			}
 		}
 	}()
@@ -83,5 +84,6 @@ func distributor(p Params, c distributorChannels) {
 	c.events <- StateChange{p.Turns, Quitting}
 
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
+	ticker.Stop()
 	close(c.events)
 }

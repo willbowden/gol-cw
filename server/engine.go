@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"net/rpc"
+	"sync"
 
 	"uk.ac.bris.cs/gameoflife/stubs"
 	//	"fmt"
@@ -14,6 +15,19 @@ import (
 )
 
 // GOL Logic as in Parallel Implementation
+
+func countAliveCells(p stubs.Params, world [][]byte) int {
+	count := 0
+	for _, row := range world {
+		for _, cellValue := range row {
+			if cellValue == 255 {
+				count++
+			}
+		}
+	}
+
+	return count
+}
 
 // calculate number of neighbours around a cell at given coords, wrapping around world edges
 func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int {
@@ -90,36 +104,45 @@ func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 }
 
 // distributor divides the work between workers and interacts with other goroutines.
-func engine(p stubs.Params, state [][]uint8) [][]uint8 {
+// func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 
-	// Channel to receive new state output from workers
-	newFrames := make(chan [][]uint8)
+// 	// Channel to receive new state output from workers
 
-	for turn := 0; turn < p.Turns; turn++ {
-		go calculateNewState(p, state, turn, newFrames)
-		state = <-newFrames
-
-	}
-
-	return state
-
-}
+// }
 
 // RPC Requests
 
-type Gol struct{}
+type Gol struct {
+	state [][]uint8
+	turn  int
+	lock  sync.Mutex
+}
 
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	// get new state : set for response state
-	res.State = engine(req.Params, req.CurrentState)
-	return
+	newFrames := make(chan [][]uint8)
+	g.state = req.CurrentState
+	for g.turn = 0; g.turn < req.Params.Turns; g.turn++ {
+		go calculateNewState(req.Params, g.state, g.turn, newFrames)
+		g.lock.Lock()
+		g.state = <-newFrames
+		g.lock.Unlock()
 
+	}
+
+	res.State = g.state
+	return
 }
 
 // alive cells count called by the distributor
 func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err error) {
-
+	g.lock.Lock()
+	count := countAliveCells(req.Params, g.state)
+	g.lock.Unlock()
+	res.Turn = g.turn
+	res.CellsCount = count
+	return
 }
 
 // Server Handling
