@@ -1,6 +1,7 @@
 package stubs
 
 var ProcessTurns = "Gol.ProcessTurns"
+var AliveCellsCount = "Gol.AliveCellsCount"
 
 type Params struct {
 	Turns       int
@@ -11,6 +12,10 @@ type Params struct {
 
 type Response struct {
 	State [][]uint8
+}
+
+type CellCount struct {
+	Cells int
 }
 
 type Request struct {

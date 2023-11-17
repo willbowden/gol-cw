@@ -3,6 +3,7 @@ package gol
 import (
 	"fmt"
 	"net/rpc"
+	"time"
 
 	"uk.ac.bris.cs/gameoflife/stubs"
 	"uk.ac.bris.cs/gameoflife/util"
@@ -55,6 +56,18 @@ func distributor(p Params, c distributorChannels) {
 			world[y][x] = cell
 		}
 	}
+
+	ticker := time.NewTicker(2000 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
+				response := new(stubs.CellCount)
+				client.Call(stubs.AliveCellsCount, request, response)
+			}
+		}
+	}()
 
 	// Execute all turns of the Game of Life.
 

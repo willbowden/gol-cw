@@ -94,6 +94,7 @@ func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 
 	// Channel to receive new state output from workers
 	newFrames := make(chan [][]uint8)
+
 	for turn := 0; turn < p.Turns; turn++ {
 		go calculateNewState(p, state, turn, newFrames)
 		state = <-newFrames
@@ -113,6 +114,11 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	// get new state : set for response state
 	res.State = engine(req.Params, req.CurrentState)
 	return
+
+}
+
+// alive cells count called by the distributor
+func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err error) {
 
 }
 
