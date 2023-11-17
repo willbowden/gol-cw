@@ -32,6 +32,23 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 	return liveCells
 }
 
+func writeImage(p Params, c distributorChannels, world [][]uint8, turn int) {
+	// Start IO output
+	filename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, turn)
+	c.ioCommand <- ioOutput
+	c.ioFilename <- filename
+
+	// Send our world data, pixel by pixel
+	for y := 0; y < p.ImageHeight; y++ {
+		for x := 0; x < p.ImageWidth; x++ {
+			c.ioOutput <- world[y][x]
+		}
+	}
+
+	// Send IO complete event to notify user
+	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
+}
+
 // distributor acts as the local controller
 func distributor(p Params, c distributorChannels) {
 	flag_server := "127.0.0.1:8030"
@@ -76,6 +93,8 @@ func distributor(p Params, c distributorChannels) {
 	response := new(stubs.Response)
 	client.Call(stubs.ProcessTurns, request, response)
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, response.State)}
+
+	writeImage(p, c, response.State, p.Turns)
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
