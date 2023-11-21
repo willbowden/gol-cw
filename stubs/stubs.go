@@ -4,6 +4,7 @@ var ProcessTurns = "Gol.ProcessTurns"
 var AliveCellsCount = "Gol.AliveCellsCount"
 var ProcessSlice = "Worker.ProcessSlice"
 var QuitBroker = "Gol.QuitBroker"
+var Screenshot = "Gol.Screenshot"
 
 type Params struct {
 	Turns       int

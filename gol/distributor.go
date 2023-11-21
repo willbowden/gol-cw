@@ -129,15 +129,17 @@ func distributor(p Params, c distributorChannels) {
 			case 'q':
 				ticker.Stop()
 				quit = true
-				fmt.Println("RECEIVED KEYPRESS")
 				req := new(stubs.Request)
 				response := new(stubs.Response)
 				client.Call(stubs.QuitBroker, req, response)
-				writeImage(p, c, world, response.CurrentTurn)
+				writeImage(p, c, response.State, response.CurrentTurn)
 				c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Quitting}
-				// s: screenshot, output current world as PGM image
-				//case 's':
-				//writeImage(p, c, world, response.CurrentTurn)
+			// s: screenshot, output current world as PGM image
+			case 's':
+				req := new(stubs.Request)
+				response := new(stubs.Response)
+				client.Call(stubs.Screenshot, req, response)
+				writeImage(p, c, response.State, response.CurrentTurn)
 				// p: pause, change state to Paused and await handlePause()
 				// case 'p':
 				// 	c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Paused}

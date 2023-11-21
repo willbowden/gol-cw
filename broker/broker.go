@@ -122,6 +122,14 @@ func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err erro
 	return
 }
 
+func (g *Gol) Screenshot(req stubs.Request, res *stubs.Response) (err error) {
+	g.lock.Lock()
+	res.State = g.state
+	g.lock.Unlock()
+	res.CurrentTurn = g.turn
+	return
+}
+
 func (g *Gol) QuitBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
@@ -129,7 +137,6 @@ func (g *Gol) QuitBroker(req stubs.Request, res *stubs.Response) (err error) {
 	res.CurrentTurn = g.turn
 	g.quit = true
 	return
-
 }
 
 // Server Handling
