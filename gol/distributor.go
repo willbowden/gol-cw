@@ -16,6 +16,7 @@ type distributorChannels struct {
 	ioFilename chan<- string
 	ioOutput   chan<- uint8
 	ioInput    <-chan uint8
+	keyPresses <-chan rune
 }
 
 // Check all cells and add live ones to output list
@@ -47,6 +48,18 @@ func writeImage(p Params, c distributorChannels, world [][]uint8, turn int) {
 
 	// Send IO complete event to notify user
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
+}
+
+func handlePause(c distributorChannels, turn int) {
+	// Continuously wait for a 'p' keypress before returning from the function.
+	select {
+	case nextKey := <-c.keyPresses:
+		if nextKey == 'p' {
+			// Set state to Executing
+			c.events <- StateChange{CompletedTurns: turn, NewState: Executing}
+			return
+		}
+	}
 }
 
 // distributor acts as the local controller
@@ -87,12 +100,39 @@ func distributor(p Params, c distributorChannels) {
 		}
 	}()
 
-	// Execute all turns of the Game of Life.
+	quit := false
 
 	request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
 	response := new(stubs.Response)
 	client.Call(stubs.ProcessTurns, request, response)
 	c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, response.State)}
+
+	for quit == false {
+		select {
+		// If we receive a keypress
+		case key := <-c.keyPresses:
+			switch key {
+			// q: quit, change state to Quitting
+			case 'q':
+				quit = true
+				response := new(stubs.Response)
+				client.Call(stubs.QuitBroker, nil, response)
+				c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Quitting}
+			// s: screenshot, output current world as PGM image
+			case 's':
+				writeImage(p, c, world, response.CurrentTurn)
+			// p: pause, change state to Paused and await handlePause()
+			case 'p':
+				c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Paused}
+
+				// handlePause halts execution until the user presses 'p' for a second time.
+				handlePause(c, response.CurrentTurn)
+				fmt.Println("Continuing")
+			}
+		}
+	}
+
+	// Execute all turns of the Game of Life.
 
 	writeImage(p, c, response.State, p.Turns)
 

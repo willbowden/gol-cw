@@ -93,14 +93,14 @@ type Gol struct {
 	turn    int
 	lock    sync.Mutex
 	clients []*rpc.Client
+	quit    bool
 }
 
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
-	// Set threads to 2 since we have to manually start AWS nodes
-	req.Params.Threads = 2
+	// get new state : set for response state
 	g.state = req.CurrentState
-	for g.turn = 0; g.turn < req.Params.Turns; g.turn++ {
+	for g.turn = 0; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
 		newFrame := calculateNewState(req.Params, g)
 		g.lock.Lock()
 		g.state = newFrame
@@ -121,6 +121,16 @@ func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err erro
 	return
 }
 
+func (g *Gol) QuitBroker(res *stubs.Response) (err error) {
+	g.quit = true
+	g.lock.Lock()
+	res.State = g.state
+	g.lock.Unlock()
+	res.CurrentTurn = g.turn
+	return
+
+}
+
 // Server Handling
 func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
@@ -132,6 +142,7 @@ func main() {
 	for _, instance := range instances {
 		client, _ := rpc.Dial("tcp", instance)
 		connections = append(connections, client)
+		fmt.Println(client)
 		defer client.Close()
 	}
 
