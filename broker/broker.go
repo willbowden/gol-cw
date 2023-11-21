@@ -125,13 +125,13 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	ports := []string{"8031", "8032"}
+	instances := []string{"54.196.76.157:8030", "52.55.224.116:8030"}
 	connections := make([]*rpc.Client, 2)
 
-	for _, port := range ports {
-		server := fmt.Sprint("127.0.0.1:", port)
-		client, _ := rpc.Dial("tcp", server)
+	for _, instance := range instances {
+		client, _ := rpc.Dial("tcp", instance)
 		connections = append(connections, client)
+		fmt.Println(client)
 		defer client.Close()
 	}
 
