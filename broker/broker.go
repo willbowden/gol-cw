@@ -132,7 +132,6 @@ func main() {
 	for _, instance := range instances {
 		client, _ := rpc.Dial("tcp", instance)
 		connections = append(connections, client)
-		fmt.Println(client)
 		defer client.Close()
 	}
 
