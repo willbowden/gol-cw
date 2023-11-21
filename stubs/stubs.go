@@ -3,6 +3,7 @@ package stubs
 var ProcessTurns = "Gol.ProcessTurns"
 var AliveCellsCount = "Gol.AliveCellsCount"
 var ProcessSlice = "Worker.ProcessSlice"
+var PingWorker = "Worker.Ping"
 
 type Params struct {
 	Turns       int
@@ -18,6 +19,10 @@ type Response struct {
 type CellCount struct {
 	Turn       int
 	CellsCount int
+}
+
+type TestResponse struct {
+	Message string
 }
 
 type Request struct {

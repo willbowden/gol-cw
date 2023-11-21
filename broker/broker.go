@@ -135,6 +135,13 @@ func main() {
 		defer client.Close()
 	}
 
+	for _, con := range connections {
+		req := stubs.Request{}
+		response := new(stubs.TestResponse)
+		con.Call(stubs.PingWorker, req, response)
+		fmt.Println(response.Message)
+	}
+
 	rpc.Register(&Gol{clients: connections})
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 	fmt.Println("Server open on port", *pAddr)
