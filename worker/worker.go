@@ -67,11 +67,6 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 	return
 }
 
-func (w *Worker) Ping(req stubs.Request, res *stubs.TestResponse) (err error) {
-	res.Message = "HELLO! WORKING"
-	return
-}
-
 func main() {
 	pAddr := flag.String("port", "8031", "Port to listen on")
 	flag.Parse()

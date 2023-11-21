@@ -126,20 +126,13 @@ func main() {
 	flag.Parse()
 
 	instances := []string{"54.196.76.157:8030", "52.55.224.116:8030"}
-	connections := make([]*rpc.Client, 2)
+	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
 		client, _ := rpc.Dial("tcp", instance)
 		connections = append(connections, client)
 		fmt.Println(client)
 		defer client.Close()
-	}
-
-	for _, con := range connections {
-		req := stubs.Request{}
-		response := new(stubs.TestResponse)
-		con.Call(stubs.PingWorker, req, response)
-		fmt.Println(response.Message)
 	}
 
 	rpc.Register(&Gol{clients: connections})
