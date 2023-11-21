@@ -58,7 +58,7 @@ func calculateNewState(p stubs.Params, g *Gol) [][]uint8 {
 			y2 += remainder
 		}
 		// Start worker on its slice
-		go callWorker(y1, y2, p, g.state, channel, g.clients[i])
+		go callWorker(y1, y2, p, g.state, channel, g.clients[i-1])
 
 	}
 
@@ -97,7 +97,8 @@ type Gol struct {
 
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
-	// get new state : set for response state
+	// Set threads to 2 since we have to manually start AWS nodes
+	req.Params.Threads = 2
 	g.state = req.CurrentState
 	for g.turn = 0; g.turn < req.Params.Turns; g.turn++ {
 		newFrame := calculateNewState(req.Params, g)
