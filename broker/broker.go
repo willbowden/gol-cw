@@ -99,6 +99,7 @@ type Gol struct {
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	// get new state : set for response state
+	req.Params.Threads = 2
 	g.state = req.CurrentState
 	for g.turn = 0; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
 		newFrame := calculateNewState(req.Params, g)
@@ -121,12 +122,12 @@ func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err erro
 	return
 }
 
-func (g *Gol) QuitBroker(res *stubs.Response) (err error) {
-	g.quit = true
+func (g *Gol) QuitBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
 	g.lock.Unlock()
 	res.CurrentTurn = g.turn
+	g.quit = true
 	return
 
 }
