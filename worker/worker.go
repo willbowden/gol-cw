@@ -10,14 +10,14 @@ import (
 )
 
 // calculate number of neighbours around a cell at given coords, wrapping around world edges
-func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int {
+func getNumNeighbours(y, x int, world [][]uint8, p stubs.Params) int {
 	numNeighbours := 0
 	// Look 1 to left, right, above and below the chosen cell
 	for yInc := -1; yInc <= 1; yInc++ {
 		var testY int = (y + yInc + p.ImageHeight) % p.ImageHeight
 		for xInc := -1; xInc <= 1; xInc++ {
 			var testX int = (x + xInc + p.ImageWidth) % p.ImageWidth
-			if (testX != x || testY != y) && world(testY, testX) == 255 {
+			if (testX != x || testY != y) && world[testY][testX] == 255 {
 				numNeighbours++
 			}
 		}
@@ -27,7 +27,7 @@ func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int 
 }
 
 // worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
-func worker(y1, y2 int, world func(y, x int) uint8, p stubs.Params) [][]uint8 {
+func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 	sliceHeight := (y2 - y1) + 1
 	var newSlice = make([][]uint8, sliceHeight)
 	for i := 0; i < sliceHeight; i++ {
@@ -36,7 +36,7 @@ func worker(y1, y2 int, world func(y, x int) uint8, p stubs.Params) [][]uint8 {
 	for y := y1; y <= y2; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
 			neighbours := getNumNeighbours(y, x, world, p)
-			cellValue := world(y, x)
+			cellValue := world[y][x]
 			switch {
 			// <2 neighbours, cell dies
 			case neighbours < 2:
