@@ -2,6 +2,7 @@ package stubs
 
 var ProcessTurns = "Gol.ProcessTurns"
 var AliveCellsCount = "Gol.AliveCellsCount"
+var ProcessSlice = "Worker.ProcessSlice"
 
 type Params struct {
 	Turns       int

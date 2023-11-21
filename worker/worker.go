@@ -27,7 +27,7 @@ func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int 
 }
 
 // worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
-func worker(y1, y2 int, world func(y, x int) uint8, p stubs.Params, turn int) [][]uint8 {
+func worker(y1, y2 int, world func(y, x int) uint8, p stubs.Params) [][]uint8 {
 	sliceHeight := (y2 - y1) + 1
 	var newSlice = make([][]uint8, sliceHeight)
 	for i := 0; i < sliceHeight; i++ {
