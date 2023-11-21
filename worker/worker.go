@@ -61,8 +61,8 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 
 type Worker struct{}
 
-func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) {
-	newSlice := worker(req.y1, req.y2, req.CurrentState, req.Params)
+func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
+	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
 	res.State = newSlice
 	return
 }
@@ -74,6 +74,5 @@ func main() {
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
-	// boilerplate for registering type Gol -> we can use Gol methods
 	rpc.Accept(listener)
 }

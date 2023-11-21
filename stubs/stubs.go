@@ -23,5 +23,5 @@ type CellCount struct {
 type Request struct {
 	Params       Params
 	CurrentState [][]uint8
-	y1, y2       int
+	Y1, Y2       int
 }

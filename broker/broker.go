@@ -29,71 +29,47 @@ func countAliveCells(p stubs.Params, world [][]byte) int {
 	return count
 }
 
-// calculate number of neighbours around a cell at given coords, wrapping around world edges
-func getNumNeighbours(y, x int, world func(y, x int) uint8, p stubs.Params) int {
-	numNeighbours := 0
-	// Look 1 to left, right, above and below the chosen cell
-	for yInc := -1; yInc <= 1; yInc++ {
-		var testY int = (y + yInc + p.ImageHeight) % p.ImageHeight
-		for xInc := -1; xInc <= 1; xInc++ {
-			var testX int = (x + xInc + p.ImageWidth) % p.ImageWidth
-			if (testX != x || testY != y) && world(testY, testX) == 255 {
-				numNeighbours++
-			}
-		}
-	}
-
-	return numNeighbours
+func callWorker(y1, y2 int, p stubs.Params, world [][]uint8, ch chan<- [][]uint8, client *rpc.Client) {
+	request := stubs.Request{CurrentState: world, Params: stubs.Params(p), Y1: y1, Y2: y2}
+	response := new(stubs.Response)
+	client.Call(stubs.ProcessSlice, request, response)
+	ch <- response.State
 }
 
-// worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
-func worker(y1, y2 int, world func(y, x int) uint8, c chan<- [][]uint8, p stubs.Params, turn int) {
-	sliceHeight := (y2 - y1) + 1
-	var newSlice = make([][]uint8, sliceHeight)
-	for i := 0; i < sliceHeight; i++ {
-		newSlice[i] = make([]uint8, p.ImageWidth)
-	}
-	for y := y1; y <= y2; y++ {
-		for x := 0; x < p.ImageWidth; x++ {
-			neighbours := getNumNeighbours(y, x, world, p)
-			cellValue := world(y, x)
-			switch {
-			// <2 neighbours, cell dies
-			case neighbours < 2:
-				newSlice[y-y1][x] = 0
-			// >3 neighbours, live cell dies
-			case neighbours > 3 && cellValue == 255:
-				newSlice[y-y1][x] = 0
-			// exactly 3 neighbours, dead cell comes alive
-			case neighbours == 3 && cellValue == 0:
-				newSlice[y-y1][x] = 255
-			// otherwise send current cell value to new state
-			default:
-				newSlice[y-y1][x] = cellValue
-			}
-		}
-	}
-	// send new world slice down output channel
-	c <- newSlice
-}
-
-func calculateNewState(p stubs.Params, world [][]uint8, turn int, ch chan<- [][]uint8) {
+func calculateNewState(p stubs.Params, g *Gol) [][]uint8 {
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
-	immutableWorld := makeImmutableWorld(world)
 
-	ch_out := make(chan [][]uint8)
+	channels := make([]chan [][]uint8, p.Threads)
+	for v := range channels {
+		channels[v] = make(chan [][]uint8)
+	}
 
-	go worker(0, p.ImageHeight-1, immutableWorld, ch_out, p, turn)
+	// Values for dividing up world between n threads
+	sliceSize := p.ImageHeight / p.Threads
+	remainder := p.ImageHeight % p.Threads
 
-	newSlice := <-ch_out
-	newFrame = append(newFrame, newSlice...)
+	for i, channel := range channels {
+		i += 1
+		// Calculate y bounds for thread
+		y1 := (i - 1) * sliceSize
+		y2 := (i * sliceSize) - 1
+		if i == p.Threads {
+			y2 += remainder
+		}
+		// Start worker on its slice
+		go callWorker(y1, y2, p, g.state, channel, g.clients[i])
 
-	// Wait for the worker goroutine to finish
+	}
 
-	ch <- newFrame
+	for _, channel := range channels {
+		newSlice := <-channel
+		newFrame = append(newFrame, newSlice...)
+	}
 
-	// Send complete new frame to distributor
+	return newFrame
+
+	// Send complete new frame back to RPC func
 }
 
 // Returns a function allowing us to access data without risk of overwriting
@@ -113,22 +89,21 @@ func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 // RPC Requests
 
 type Gol struct {
-	state [][]uint8
-	turn  int
-	lock  sync.Mutex
+	state   [][]uint8
+	turn    int
+	lock    sync.Mutex
+	clients []*rpc.Client
 }
 
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	// get new state : set for response state
-	newFrames := make(chan [][]uint8)
 	g.state = req.CurrentState
 	for g.turn = 0; g.turn < req.Params.Turns; g.turn++ {
-		go calculateNewState(req.Params, g.state, g.turn, newFrames)
+		newFrame := calculateNewState(req.Params, g)
 		g.lock.Lock()
-		g.state = <-newFrames
+		g.state = newFrame
 		g.lock.Unlock()
-
 	}
 
 	res.State = g.state
@@ -149,10 +124,20 @@ func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err erro
 func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	rpc.Register(&Gol{})
+
+	ports := []string{"8031", "8032"}
+	connections := make([]*rpc.Client, 2)
+
+	for _, port := range ports {
+		server := fmt.Sprint("127.0.0.1:", port)
+		client, _ := rpc.Dial("tcp", server)
+		connections = append(connections, client)
+		defer client.Close()
+	}
+
+	rpc.Register(&Gol{clients: connections})
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
-	// boilerplate for registering type Gol -> we can use Gol methods
 	rpc.Accept(listener)
 }
