@@ -70,6 +70,7 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 	w.wg.Add(1)
 	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
 	res.State = newSlice
+	w.wg.Done()
 	return
 }
 
