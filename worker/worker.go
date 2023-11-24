@@ -86,7 +86,7 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
-	w := Worker{listener: listener}
+	w := Worker{listener: listener, signal: make(chan os.Signal, 1)}
 	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
