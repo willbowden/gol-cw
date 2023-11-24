@@ -89,17 +89,20 @@ func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 // RPC Requests
 
 type Gol struct {
-	state    [][]uint8
-	turn     int
-	lock     sync.Mutex
-	clients  []*rpc.Client
-	listener net.Listener
-	pause    bool
-	quit     bool
+	state   [][]uint8
+	turn    int
+	lock    sync.Mutex
+	clients []*rpc.Client
+	pause   bool
+	quit    bool
+	signal  chan string
+	wg      sync.WaitGroup
 }
 
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
+	g.wg.Add(1)
+
 	req.Params.Threads = 2
 
 	g.quit = false
@@ -119,28 +122,43 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	}
 
 	res.State = g.state
+
+	g.wg.Done()
+
 	return
 }
 
 // alive cells count called by the distributor
 func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err error) {
+	g.wg.Add(1)
+
 	g.lock.Lock()
 	count := countAliveCells(req.Params, g.state)
 	g.lock.Unlock()
 	res.Turn = g.turn
 	res.CellsCount = count
+
+	g.wg.Done()
+
 	return
 }
 
 func (g *Gol) Screenshot(req stubs.Request, res *stubs.Response) (err error) {
+	g.wg.Add(1)
+
 	g.lock.Lock()
 	res.State = g.state
 	g.lock.Unlock()
 	res.CurrentTurn = g.turn
+
+	g.wg.Done()
+
 	return
 }
 
 func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
+	g.wg.Add(1)
+
 	if g.pause == false {
 		g.lock.Lock()
 		g.pause = true
@@ -151,20 +169,30 @@ func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
 
 	res.CurrentTurn = g.turn
 	res.Paused = g.pause
+
+	g.wg.Done()
+
 	return
 }
 
 func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
+	g.wg.Add(1)
+
 	g.lock.Lock()
 	res.State = g.state
 	g.quit = true
 	g.lock.Unlock()
 	res.CurrentTurn = g.turn
 	g.pause = true
+
+	g.wg.Done()
+
 	return
 }
 
 func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
+	g.wg.Add(1)
+
 	for _, client := range g.clients {
 		req := new(stubs.Request)
 		response := new(stubs.Response)
@@ -177,9 +205,15 @@ func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.quit = true
 	g.lock.Unlock()
 
-	// g.listener.Close()
+	g.wg.Done()
+
+	defer func() { g.signal <- "KILL" }()
 
 	return
+}
+
+func startAccepting(listener net.Listener) {
+	rpc.Accept(listener)
 }
 
 // Server Handling
@@ -197,8 +231,13 @@ func main() {
 	}
 
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
-	rpc.Register(&Gol{clients: connections, listener: listener})
+	g := Gol{clients: connections, signal: make(chan string, 1)}
+	rpc.Register(&g)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
-	rpc.Accept(listener)
+	go startAccepting(listener)
+	<-g.signal
+	fmt.Println("Server closing...")
+	g.wg.Wait()
+	close(g.signal)
 }
