@@ -217,7 +217,11 @@ func (g *Gol) startAccepting(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Accept error:", err)
+			if g.quit {
+				return
+			} else {
+				fmt.Println("Accept error:", err)
+			}
 		} else {
 			go g.serveConn(conn)
 		}

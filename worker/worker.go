@@ -92,7 +92,11 @@ func (w *Worker) startAccepting(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Accept error:", err)
+			if w.quitting {
+				return
+			} else {
+				fmt.Println("Accept error:", err)
+			}
 		} else {
 			go w.serveConn(conn)
 		}
