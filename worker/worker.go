@@ -81,8 +81,25 @@ func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) 
 	return
 }
 
-func startAccepting(listener net.Listener) {
-	rpc.Accept(listener)
+func (w *Worker) serveConn(conn net.Conn) {
+	w.wg.Add(1)
+	defer w.wg.Done()
+	rpc.ServeConn(conn)
+}
+
+func (w *Worker) startAccepting(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			if w.quitting {
+				return
+			} else {
+				fmt.Println("Accept error:", err)
+			}
+		} else {
+			go w.serveConn(conn)
+		}
+	}
 }
 
 func main() {
@@ -92,7 +109,7 @@ func main() {
 	w := Worker{listener: listener, signal: make(chan string, 1)}
 	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
-	go startAccepting(listener)
+	go w.startAccepting(listener)
 	<-w.signal
 	fmt.Println("Server closing...")
 	w.wg.Wait()
