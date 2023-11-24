@@ -74,7 +74,7 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
-	signal.Notify(w.signal, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(w.signal, syscall.SIGTERM)
 	return
 }
 
