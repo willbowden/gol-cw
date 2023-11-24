@@ -75,7 +75,7 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
-	defer func() { w.signal <- "KILL" }()
+	w.signal <- "KILL"
 	return
 }
 
@@ -90,8 +90,8 @@ func main() {
 	w := Worker{listener: listener, signal: make(chan string, 1)}
 	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
-	go startAccepting(listener)
 	defer listener.Close()
+	go startAccepting(listener)
 	<-w.signal
 	fmt.Println("Server closing...")
 	w.wg.Wait()
