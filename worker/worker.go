@@ -68,21 +68,33 @@ type Worker struct {
 
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
 	w.wg.Add(1)
+	defer w.wg.Done()
 	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
 	res.State = newSlice
-	w.wg.Done()
 	return
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
-	w.wg.Add(1)
-	defer func() { w.signal <- "KILL" }()
-	w.wg.Done()
+	w.signal <- "KILL"
 	return
 }
 
-func startAccepting(listener net.Listener) {
-	rpc.Accept(listener)
+func (w *Worker) startAccepting(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			select {
+			case <-w.signal:
+				// Listener is intentionally closed, return from the function
+				return
+			default:
+				// Handle other errors
+				fmt.Println("Accept error:", err)
+				continue
+			}
+		}
+		go rpc.ServeConn(conn)
+	}
 }
 
 func main() {
@@ -92,10 +104,10 @@ func main() {
 	w := Worker{listener: listener, signal: make(chan string, 1)}
 	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
-	defer listener.Close()
-	go startAccepting(listener)
+	go w.startAccepting(listener)
 	<-w.signal
 	fmt.Println("Server closing...")
 	w.wg.Wait()
+	listener.Close()
 	close(w.signal)
 }
