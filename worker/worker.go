@@ -90,10 +90,10 @@ func main() {
 	w := Worker{listener: listener, signal: make(chan string, 1)}
 	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
-	defer listener.Close()
 	go startAccepting(listener)
 	<-w.signal
 	w.wg.Wait()
 	fmt.Println("Server closing...")
+	listener.Close()
 	close(w.signal)
 }
