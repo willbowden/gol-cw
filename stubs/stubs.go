@@ -5,6 +5,7 @@ var AliveCellsCount = "Gol.AliveCellsCount"
 var ProcessSlice = "Worker.ProcessSlice"
 var QuitBroker = "Gol.QuitBroker"
 var Screenshot = "Gol.Screenshot"
+var PauseBroker = "Gol.PauseBroker"
 
 type Params struct {
 	Turns       int
@@ -16,6 +17,7 @@ type Params struct {
 type Response struct {
 	State       [][]uint8
 	CurrentTurn int
+	Paused      bool
 }
 
 type CellCount struct {

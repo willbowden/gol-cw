@@ -140,12 +140,17 @@ func distributor(p Params, c distributorChannels) {
 				response := new(stubs.Response)
 				client.Call(stubs.Screenshot, req, response)
 				writeImage(p, c, response.State, response.CurrentTurn)
-				// p: pause, change state to Paused and await handlePause()
-				// case 'p':
-				// 	c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Paused}
-				// 	handlePause halts execution until the user presses 'p' for a second time.
-				// 	handlePause(c, response.CurrentTurn)
-				// 	fmt.Println("Continuing")
+			//p: pause, change state to Paused
+			case 'p':
+				req := new(stubs.Request)
+				response := new(stubs.Response)
+				client.Call(stubs.PauseBroker, req, response)
+				if response.Paused {
+					c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Paused}
+				} else {
+					c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Executing}
+					fmt.Println("Continuing")
+				}
 			}
 		}
 	}

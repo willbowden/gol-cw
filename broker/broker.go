@@ -93,6 +93,7 @@ type Gol struct {
 	turn    int
 	lock    sync.Mutex
 	clients []*rpc.Client
+	pause   bool
 	quit    bool
 }
 
@@ -130,6 +131,20 @@ func (g *Gol) Screenshot(req stubs.Request, res *stubs.Response) (err error) {
 	return
 }
 
+func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
+	if g.pause == false {
+		g.lock.Lock()
+		g.pause = true
+	} else {
+		g.lock.Unlock()
+		g.pause = false
+	}
+
+	res.CurrentTurn = g.turn
+	res.Paused = g.pause
+	return
+}
+
 func (g *Gol) QuitBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
@@ -144,7 +159,7 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	instances := []string{"54.196.76.157:8030", "52.55.224.116:8030"}
+	instances := []string{"54.157.203.179:8030", "54.161.69.22:8030"}
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
