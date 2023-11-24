@@ -90,8 +90,9 @@ func (w *Worker) startAccepting(listener net.Listener) {
 			} else {
 				fmt.Println("Accept error:", err)
 			}
+		} else {
+			go rpc.ServeConn(conn)
 		}
-		go rpc.ServeConn(conn)
 	}
 }
 
