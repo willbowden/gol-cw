@@ -102,6 +102,7 @@ type Gol struct {
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
+	defer g.wg.Done()
 
 	req.Params.Threads = 2
 
@@ -123,14 +124,13 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 
 	res.State = g.state
 
-	g.wg.Done()
-
 	return
 }
 
 // alive cells count called by the distributor
 func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err error) {
 	g.wg.Add(1)
+	defer g.wg.Done()
 
 	g.lock.Lock()
 	count := countAliveCells(req.Params, g.state)
@@ -138,26 +138,24 @@ func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err erro
 	res.Turn = g.turn
 	res.CellsCount = count
 
-	g.wg.Done()
-
 	return
 }
 
 func (g *Gol) Screenshot(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
+	defer g.wg.Done()
 
 	g.lock.Lock()
 	res.State = g.state
 	g.lock.Unlock()
 	res.CurrentTurn = g.turn
 
-	g.wg.Done()
-
 	return
 }
 
 func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
+	defer g.wg.Done()
 
 	if g.pause == false {
 		g.lock.Lock()
@@ -170,13 +168,12 @@ func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
 	res.CurrentTurn = g.turn
 	res.Paused = g.pause
 
-	g.wg.Done()
-
 	return
 }
 
 func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
+	defer g.wg.Done()
 
 	g.lock.Lock()
 	res.State = g.state
@@ -185,13 +182,12 @@ func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
 	res.CurrentTurn = g.turn
 	g.pause = true
 
-	g.wg.Done()
-
 	return
 }
 
 func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
+	defer g.wg.Done()
 
 	for _, client := range g.clients {
 		req := new(stubs.Request)
@@ -205,9 +201,7 @@ func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.quit = true
 	g.lock.Unlock()
 
-	g.wg.Done()
-
-	defer func() { g.signal <- "KILL" }()
+	g.signal <- "KILL"
 
 	return
 }
@@ -227,7 +221,6 @@ func main() {
 	for _, instance := range instances {
 		client, _ := rpc.Dial("tcp", instance)
 		connections = append(connections, client)
-		defer client.Close()
 	}
 
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
@@ -239,5 +232,8 @@ func main() {
 	<-g.signal
 	fmt.Println("Server closing...")
 	g.wg.Wait()
+	for _, client := range g.clients {
+		client.Close()
+	}
 	close(g.signal)
 }
