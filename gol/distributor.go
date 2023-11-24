@@ -153,6 +153,8 @@ func distributor(p Params, c distributorChannels) {
 					fmt.Println("Continuing")
 				}
 			case 'k':
+				ticker.Stop()
+				quit = true
 				req := new(stubs.Request)
 				response := new(stubs.Response)
 				client.Call(stubs.KillBroker, req, response)

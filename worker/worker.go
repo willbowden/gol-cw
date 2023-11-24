@@ -61,21 +61,19 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 // Add rpc function(s)
 
 type Worker struct {
-	lock     sync.Mutex
+	wg       sync.WaitGroup
 	listener net.Listener
 	signal   chan string
 }
 
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
+	w.wg.Add(1)
 	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
-	w.lock.Lock()
 	res.State = newSlice
-	w.lock.Unlock()
 	return
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
-	w.lock.Lock()
 	w.signal <- "KILL"
 	return
 }
@@ -94,6 +92,7 @@ func main() {
 	defer listener.Close()
 	go startAccepting(listener)
 	<-w.signal
+	w.wg.Wait()
 	fmt.Println("Server closing...")
 	close(w.signal)
 }
