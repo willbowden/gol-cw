@@ -64,6 +64,7 @@ type Worker struct {
 	wg       sync.WaitGroup
 	listener net.Listener
 	signal   chan string
+	quitting bool
 }
 
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
@@ -75,6 +76,7 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
+	w.quitting = true
 	w.signal <- "KILL"
 	return
 }
@@ -83,14 +85,10 @@ func (w *Worker) startAccepting(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			select {
-			case <-w.signal:
-				// Listener is intentionally closed, return from the function
+			if w.quitting {
 				return
-			default:
-				// Handle other errors
+			} else {
 				fmt.Println("Accept error:", err)
-				continue
 			}
 		}
 		go rpc.ServeConn(conn)
