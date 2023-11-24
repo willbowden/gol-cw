@@ -89,20 +89,29 @@ func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 // RPC Requests
 
 type Gol struct {
-	state   [][]uint8
-	turn    int
-	lock    sync.Mutex
-	clients []*rpc.Client
-	pause   bool
-	quit    bool
+	state    [][]uint8
+	turn     int
+	lock     sync.Mutex
+	clients  []*rpc.Client
+	listener net.Listener
+	pause    bool
+	quit     bool
 }
 
 // calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
-	// get new state : set for response state
 	req.Params.Threads = 2
-	g.state = req.CurrentState
-	for g.turn = 0; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
+
+	g.quit = false
+
+	// If we're not paused because of a client quit, start from new state.
+	// Otherwise, it will just resume processing on the already existing state
+	if g.pause == false {
+		g.state = req.CurrentState
+		g.turn = 0
+	}
+
+	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
 		newFrame := calculateNewState(req.Params, g)
 		g.lock.Lock()
 		g.state = newFrame
@@ -145,12 +154,30 @@ func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
 	return
 }
 
-func (g *Gol) QuitBroker(req stubs.Request, res *stubs.Response) (err error) {
+func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
+	g.quit = true
 	g.lock.Unlock()
 	res.CurrentTurn = g.turn
+	g.pause = true
+	return
+}
+
+func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
+	for _, client := range g.clients {
+		req := new(stubs.Request)
+		response := new(stubs.Response)
+		client.Call(stubs.KillWorker, req, response)
+	}
+
+	g.lock.Lock()
+	res.State = g.state
 	g.quit = true
+	g.lock.Unlock()
+
+	g.listener.Close()
+
 	return
 }
 
@@ -165,12 +192,11 @@ func main() {
 	for _, instance := range instances {
 		client, _ := rpc.Dial("tcp", instance)
 		connections = append(connections, client)
-		fmt.Println(client)
 		defer client.Close()
 	}
 
-	rpc.Register(&Gol{clients: connections})
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	rpc.Register(&Gol{clients: connections, listener: listener})
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
 	rpc.Accept(listener)

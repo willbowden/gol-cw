@@ -121,8 +121,9 @@ func distributor(p Params, c distributorChannels) {
 		// If we receive a keypress
 		case state := <-ch_state:
 			quit = true
-			world = state
 			c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, state)}
+			c.events <- StateChange{p.Turns, Quitting}
+			writeImage(p, c, state, p.Turns)
 		case key := <-c.keyPresses:
 			switch key {
 			// q: quit, change state to Quitting
@@ -131,7 +132,7 @@ func distributor(p Params, c distributorChannels) {
 				quit = true
 				req := new(stubs.Request)
 				response := new(stubs.Response)
-				client.Call(stubs.QuitBroker, req, response)
+				client.Call(stubs.ClientQuit, req, response)
 				writeImage(p, c, response.State, response.CurrentTurn)
 				c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Quitting}
 			// s: screenshot, output current world as PGM image
@@ -160,8 +161,6 @@ func distributor(p Params, c distributorChannels) {
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle
 	<-c.ioIdle
-
-	c.events <- StateChange{p.Turns, Quitting}
 
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)

@@ -3,9 +3,10 @@ package stubs
 var ProcessTurns = "Gol.ProcessTurns"
 var AliveCellsCount = "Gol.AliveCellsCount"
 var ProcessSlice = "Worker.ProcessSlice"
-var QuitBroker = "Gol.QuitBroker"
+var ClientQuit = "Gol.ClientQuit"
 var Screenshot = "Gol.Screenshot"
 var PauseBroker = "Gol.PauseBroker"
+var KillWorker = "Worker.KillWorker"
 
 type Params struct {
 	Turns       int

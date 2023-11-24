@@ -59,7 +59,9 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 
 // Add rpc function(s)
 
-type Worker struct{}
+type Worker struct {
+	listener net.Listener
+}
 
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
 	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
@@ -67,11 +69,16 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 	return
 }
 
+func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
+	w.listener.Close()
+	return
+}
+
 func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
-	rpc.Register(&Worker{})
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	rpc.Register(&Worker{listener: listener})
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
 	rpc.Accept(listener)
