@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"uk.ac.bris.cs/gameoflife/stubs"
 )
@@ -61,6 +64,7 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 
 type Worker struct {
 	listener net.Listener
+	signal   chan os.Signal
 }
 
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
@@ -70,16 +74,23 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
-	w.listener.Close()
+	signal.Notify(w.signal, syscall.SIGINT, syscall.SIGTERM)
 	return
+}
+
+func startAccepting(listener net.Listener) {
+	rpc.Accept(listener)
 }
 
 func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	listener, _ := net.Listen("tcp", ":"+*pAddr)
-	rpc.Register(&Worker{listener: listener})
+	w := Worker{listener: listener}
+	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
-	rpc.Accept(listener)
+	go startAccepting(listener)
+	<-w.signal
+	fmt.Println("Server closing...")
 }

@@ -177,7 +177,7 @@ func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.quit = true
 	g.lock.Unlock()
 
-	g.listener.Close()
+	// g.listener.Close()
 
 	return
 }
