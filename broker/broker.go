@@ -115,6 +115,7 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 		g.turn = 0
 	}
 
+	// Maybe find proper way to say g.turn = g.turn?
 	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
 		newFrame := calculateNewState(req.Params, g)
 		g.lock.Lock()
