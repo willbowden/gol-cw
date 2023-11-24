@@ -81,6 +81,7 @@ func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) 
 	return
 }
 
+// Ensure clients have closed connections (and therefore have received responses) before closing server
 func (w *Worker) serveConn(conn net.Conn) {
 	w.wg.Add(1)
 	defer w.wg.Done()
@@ -91,11 +92,7 @@ func (w *Worker) startAccepting(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			if w.quitting {
-				return
-			} else {
-				fmt.Println("Accept error:", err)
-			}
+			fmt.Println("Accept error:", err)
 		} else {
 			go w.serveConn(conn)
 		}
