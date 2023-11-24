@@ -34,6 +34,7 @@ func BenchmarkGol(b *testing.B) {
 				go gol.Run(p, events, nil)
 				for range events { // Consumes events until done
 				}
+
 			}
 		})
 	}
