@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"sync"
 
 	"uk.ac.bris.cs/gameoflife/stubs"
 )
@@ -60,17 +61,21 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 // Add rpc function(s)
 
 type Worker struct {
+	lock     sync.Mutex
 	listener net.Listener
 	signal   chan string
 }
 
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
 	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
+	w.lock.Lock()
 	res.State = newSlice
+	w.lock.Unlock()
 	return
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
+	w.lock.Lock()
 	w.signal <- "KILL"
 	return
 }
@@ -90,4 +95,5 @@ func main() {
 	go startAccepting(listener)
 	<-w.signal
 	fmt.Println("Server closing...")
+	close(w.signal)
 }
