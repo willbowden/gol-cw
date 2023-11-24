@@ -123,6 +123,7 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	}
 
 	res.State = g.state
+	res.CurrentTurn = g.turn
 
 	return
 }

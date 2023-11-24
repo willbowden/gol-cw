@@ -62,13 +62,13 @@ func handlePause(c distributorChannels, turn int) {
 	}
 }
 
-func startGOL(client *rpc.Client, world [][]uint8, p Params) [][]uint8 {
+func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Response) {
 
 	request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
 	response := new(stubs.Response)
 	client.Call(stubs.ProcessTurns, request, response)
 
-	return response.State
+	ch <- *response
 
 }
 
@@ -78,7 +78,7 @@ func distributor(p Params, c distributorChannels) {
 	client, _ := rpc.Dial("tcp", flag_server)
 	defer client.Close()
 
-	ch_state := make(chan [][]uint8)
+	ch_response := make(chan stubs.Response)
 
 	// Create a 2D slice to store the world.
 	world := make([][]uint8, p.ImageHeight)
@@ -114,16 +114,18 @@ func distributor(p Params, c distributorChannels) {
 
 	quit := false
 
-	go startGOL(client, world, p)
+	go startGOL(client, world, p, ch_response)
 
 	for quit == false {
 		select {
 		// If we receive a keypress
-		case state := <-ch_state:
+		case res := <-ch_response:
+			// TODO: Maybe use res.CurrentTurn rather than assuming p.Turns
+			ticker.Stop()
 			quit = true
-			c.events <- FinalTurnComplete{CompletedTurns: p.Turns, Alive: calculateAliveCells(p, state)}
-			c.events <- StateChange{p.Turns, Quitting}
-			writeImage(p, c, state, p.Turns)
+			c.events <- FinalTurnComplete{CompletedTurns: res.CurrentTurn, Alive: calculateAliveCells(p, res.State)}
+			c.events <- StateChange{res.CurrentTurn, Quitting}
+			writeImage(p, c, res.State, res.CurrentTurn)
 		case key := <-c.keyPresses:
 			switch key {
 			// q: quit, change state to Quitting
