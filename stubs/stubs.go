@@ -6,6 +6,7 @@ var ProcessSlice = "Worker.ProcessSlice"
 var ClientQuit = "Gol.ClientQuit"
 var Screenshot = "Gol.Screenshot"
 var PauseBroker = "Gol.PauseBroker"
+var KillBroker = "Gol.KillBroker"
 var KillWorker = "Worker.KillWorker"
 
 type Params struct {

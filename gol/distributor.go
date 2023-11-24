@@ -152,6 +152,12 @@ func distributor(p Params, c distributorChannels) {
 					c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Executing}
 					fmt.Println("Continuing")
 				}
+			case 'k':
+				req := new(stubs.Request)
+				response := new(stubs.Response)
+				client.Call(stubs.KillBroker, req, response)
+				writeImage(p, c, response.State, response.CurrentTurn)
+				c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Quitting}
 			}
 		}
 	}

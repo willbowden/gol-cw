@@ -173,6 +173,7 @@ func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 
 	g.lock.Lock()
 	res.State = g.state
+	res.CurrentTurn = g.turn
 	g.quit = true
 	g.lock.Unlock()
 
