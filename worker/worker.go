@@ -91,6 +91,7 @@ func (w *Worker) serveConn(conn net.Conn) {
 func (w *Worker) startAccepting(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
+		// If error is caused by us having intentionally closed the server, return
 		if err != nil {
 			if w.quitting {
 				return

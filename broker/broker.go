@@ -217,6 +217,7 @@ func (g *Gol) startAccepting(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			// If error is caused by us having intentionally closed the server, return
 			if g.quit {
 				return
 			} else {
