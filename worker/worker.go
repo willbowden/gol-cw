@@ -75,7 +75,9 @@ func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error
 }
 
 func (w *Worker) KillWorker(req stubs.Request, res *stubs.Response) (err error) {
-	w.signal <- "KILL"
+	w.wg.Add(1)
+	defer func() { w.signal <- "KILL" }()
+	w.wg.Done()
 	return
 }
 
