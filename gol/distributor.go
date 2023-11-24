@@ -158,6 +158,7 @@ func distributor(p Params, c distributorChannels) {
 				req := new(stubs.Request)
 				response := new(stubs.Response)
 				client.Call(stubs.KillBroker, req, response)
+				client.Close()
 				writeImage(p, c, response.State, response.CurrentTurn)
 				c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Quitting}
 			}

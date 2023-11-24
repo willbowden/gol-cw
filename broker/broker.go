@@ -206,8 +206,25 @@ func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 	return
 }
 
-func startAccepting(listener net.Listener) {
-	rpc.Accept(listener)
+func (g *Gol) serveConn(conn net.Conn) {
+	g.wg.Add(1)
+	defer g.wg.Done()
+	rpc.ServeConn(conn)
+}
+
+func (g *Gol) startAccepting(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			if g.quit {
+				return
+			} else {
+				fmt.Println("Accept error:", err)
+			}
+		} else {
+			go g.serveConn(conn)
+		}
+	}
 }
 
 // Server Handling
@@ -228,7 +245,7 @@ func main() {
 	rpc.Register(&g)
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
-	go startAccepting(listener)
+	go g.startAccepting(listener)
 	<-g.signal
 	fmt.Println("Server closing...")
 	g.wg.Wait()
