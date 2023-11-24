@@ -38,6 +38,7 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 	return liveCells
 }
 
+// calculateNewState divides the image up by thread count, then reassembles the workers slices
 func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int, ch chan<- [][]uint8) {
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
@@ -106,7 +107,7 @@ func handlePause(c distributorChannels, turn int) {
 	}
 }
 
-// distributor divides the work between workers and interacts with other goroutines.
+// Distributor takes in our world, and for each turn, calls a goroutine onto the calculate new state function, it also manages IO features like keypresses
 func distributor(p Params, c distributorChannels) {
 
 	c.events <- StateChange{CompletedTurns: 0, NewState: Executing}
