@@ -38,13 +38,13 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) []util.Cell {
 			switch {
 			// <2 neighbours, cell dies
 			case neighbours < 2 && cellValue == 255:
-				flippedCells = append(flippedCells, util.Cell{X: x, Y: y - y1})
+				flippedCells = append(flippedCells, util.Cell{X: x, Y: y})
 			// >3 neighbours, live cell dies
 			case neighbours > 3 && cellValue == 255:
-				flippedCells = append(flippedCells, util.Cell{X: x, Y: y - y1})
+				flippedCells = append(flippedCells, util.Cell{X: x, Y: y})
 			// exactly 3 neighbours, dead cell comes alive
 			case neighbours == 3 && cellValue == 0:
-				flippedCells = append(flippedCells, util.Cell{X: x, Y: y - y1})
+				flippedCells = append(flippedCells, util.Cell{X: x, Y: y})
 			}
 		}
 	}

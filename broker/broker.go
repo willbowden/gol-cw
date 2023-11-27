@@ -79,13 +79,6 @@ func (g *Gol) calculateNewState(p stubs.Params) []util.Cell {
 
 }
 
-// Returns a function allowing us to access data without risk of overwriting
-func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
-	return func(y, x int) uint8 {
-		return world[y][x]
-	}
-}
-
 // distributor divides the work between workers and interacts with other goroutines.
 // func engine(p stubs.Params, state [][]uint8) [][]uint8 {
 
@@ -109,6 +102,8 @@ type Gol struct {
 func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
+
+	req.Params.Threads = 2
 
 	if req.CurrentState != nil {
 		g.state = req.CurrentState
