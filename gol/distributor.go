@@ -50,15 +50,15 @@ func writeImage(p Params, c distributorChannels, world [][]uint8, turn int) {
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
 }
 
-func handlePause(c distributorChannels, turn int) {
-	// Continuously wait for a 'p' keypress before returning from the function.
-	select {
-	case nextKey := <-c.keyPresses:
-		if nextKey == 'p' {
-			// Set state to Executing
-			c.events <- StateChange{CompletedTurns: turn, NewState: Executing}
-			return
-		}
+func handlePause(c distributorChannels, client *rpc.Client) {
+	req := new(stubs.Request)
+	response := new(stubs.Response)
+	client.Call(stubs.PauseBroker, req, response)
+	if response.Paused {
+		c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Paused}
+	} else {
+		c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Executing}
+		fmt.Println("Continuing")
 	}
 }
 
@@ -135,8 +135,9 @@ func distributor(p Params, c distributorChannels) {
 				for _, cell := range res.FlippedCells {
 					c.events <- CellFlipped{CompletedTurns: res.CurrentTurn, Cell: cell}
 				}
-				// If we're receiving state and we haven't finished all turns, we're resuming from a pause
+				// If we're receiving state and we haven't finished all turns, we're resuming from a client-side quit
 			} else if res.State != nil && res.CurrentTurn != p.Turns {
+				fmt.Println("Picking up from turn ", res.CurrentTurn)
 				// So we need to make sure the GUI reflects the current state, rather than from the loaded image
 				for row := range res.State {
 					for col := range res.State[row] {
@@ -174,15 +175,8 @@ func distributor(p Params, c distributorChannels) {
 				writeImage(p, c, response.State, response.CurrentTurn)
 			//p: pause, change state to Paused
 			case 'p':
-				req := new(stubs.Request)
-				response := new(stubs.Response)
-				client.Call(stubs.PauseBroker, req, response)
-				if response.Paused {
-					c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Paused}
-				} else {
-					c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Executing}
-					fmt.Println("Continuing")
-				}
+				// Running pause logic in goroutine allows other keypresses to work while paused
+				go handlePause(c, client)
 			case 'k':
 				ticker.Stop()
 				quit = true

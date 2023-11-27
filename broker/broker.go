@@ -79,15 +79,6 @@ func (g *Gol) calculateNewState(p stubs.Params) []util.Cell {
 
 }
 
-// distributor divides the work between workers and interacts with other goroutines.
-// func engine(p stubs.Params, state [][]uint8) [][]uint8 {
-
-// 	// Channel to receive new state output from workers
-
-// }
-
-// RPC Requests
-
 type Gol struct {
 	state   [][]uint8
 	turn    int
@@ -103,71 +94,54 @@ func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	req.Params.Threads = 4
+	// req.Params.Threads = 4
 	// If we're receiving a first-time call from distributor, and we're not paused, start from the new state.
 	if req.CurrentState != nil && g.pause == false {
+		g.lock.Lock()
 		g.state = req.CurrentState
 		g.turn = 0
-		// Otherwise we are picking up from a pause, so just resume from the existing state
+		g.lock.Unlock()
+		// Otherwise we are picking up from a client-side quit, so just resume from the existing state
 		// Also, return the current state once so the distributor can display GUI correctly.
 	} else if req.CurrentState != nil {
+		g.lock.Lock()
 		res.State = g.state
+		g.pause = false
+		g.lock.Unlock()
 	}
 
 	cellsFlipped := g.calculateNewState(req.Params)
 	res.FlippedCells = cellsFlipped
 
+	g.lock.Lock()
 	res.CurrentTurn = g.turn
+	g.lock.Unlock()
 
 	if g.turn == req.Params.Turns-1 {
+		g.lock.Lock()
 		res.State = g.state
+		g.lock.Unlock()
 	}
 
 	g.turn++
 
+	for g.pause {
+		// If we're paused, wait until we're unpaused
+	}
+
 	return
 }
-
-// calculate new state
-// func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
-// 	g.wg.Add(1)
-// 	defer g.wg.Done()
-
-// 	req.Params.Threads = 2
-
-// 	g.quit = false
-
-// 	// If we're not paused because of a client quit, start from new state.
-// 	// Otherwise, it will just resume processing on the already existing state
-// 	if g.pause == false {
-// 		g.state = req.CurrentState
-// 		g.turn = 0
-// 	}
-
-// 	// Maybe find proper way to say g.turn = g.turn?
-// 	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
-// 		newFrame := calculateNewState(req.Params, g)
-// 		g.lock.Lock()
-// 		g.state = newFrame
-// 		g.lock.Unlock()
-// 	}
-
-// 	res.State = g.state
-// 	res.CurrentTurn = g.turn
-
-// 	return
-// }
 
 // alive cells count called by the distributor
 func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	g.lock.Lock()
 	count := countAliveCells(req.Params, g.state)
-	g.lock.Unlock()
-	res.CurrentTurn = g.turn
+	g.lock.Lock()
 	res.CellCount = count
+	res.CurrentTurn = g.turn
+	g.lock.Unlock()
 
 	return
 }
@@ -178,8 +152,8 @@ func (g *Gol) Screenshot(req stubs.Request, res *stubs.Response) (err error) {
 
 	g.lock.Lock()
 	res.State = g.state
-	g.lock.Unlock()
 	res.CurrentTurn = g.turn
+	g.lock.Unlock()
 
 	return
 }
@@ -188,16 +162,11 @@ func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	if g.pause == false {
-		g.lock.Lock()
-		g.pause = true
-	} else {
-		g.lock.Unlock()
-		g.pause = false
-	}
-
+	g.lock.Lock()
+	g.pause = !g.pause
 	res.CurrentTurn = g.turn
 	res.Paused = g.pause
+	g.lock.Unlock()
 
 	return
 }
@@ -209,9 +178,9 @@ func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
 	g.quit = true
-	g.lock.Unlock()
-	res.CurrentTurn = g.turn
 	g.pause = true
+	res.CurrentTurn = g.turn
+	g.lock.Unlock()
 
 	return
 }
@@ -230,6 +199,7 @@ func (g *Gol) KillBroker(req stubs.Request, res *stubs.Response) (err error) {
 	res.State = g.state
 	res.CurrentTurn = g.turn
 	g.quit = true
+	g.pause = false
 	g.lock.Unlock()
 
 	g.signal <- "KILL"
@@ -265,8 +235,12 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	// instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
-	instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
+	// AWS Node IPs
+	instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
+
+	// Local IPs for testing
+	// instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
+
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
