@@ -2,6 +2,7 @@ package gol
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"uk.ac.bris.cs/gameoflife/util"
@@ -39,7 +40,8 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 }
 
 // calculateNewState divides the image up by thread count, then reassembles the workers slices
-func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int, ch chan<- [][]uint8) {
+func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int, ch chan<- [][]uint8, wg *sync.WaitGroup) {
+	wg.Add(1)
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
 
@@ -156,9 +158,12 @@ func distributor(p Params, c distributorChannels) {
 	newFrames := make(chan [][]uint8)
 	quit := false
 
+	var wg sync.WaitGroup
+
 	for turn = 0; turn < p.Turns && !quit; turn++ {
 		// Start calculation of next frame
-		go calculateNewState(p, c, world, turn, newFrames)
+		go calculateNewState(p, c, world, turn, newFrames, &wg)
+		defer wg.Wait()
 		// Await reception from channels
 		select {
 		// If next frame is finished, update world & send turn complete event
@@ -185,8 +190,6 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
-
-	//wg.Wait()
 
 	// Stop ticker and output final state of world as image
 	ticker.Stop()
