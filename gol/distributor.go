@@ -64,11 +64,17 @@ func handlePause(c distributorChannels, turn int) {
 
 func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Response) {
 
-	request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
-	response := new(stubs.Response)
-	client.Call(stubs.ProcessTurns, request, response)
-
-	ch <- *response
+	for turn := 0; turn < p.Turns; turn++ {
+		var request stubs.Request
+		if turn == 0 {
+			request = stubs.Request{CurrentState: world, Params: stubs.Params(p)}
+		} else {
+			request = stubs.Request{Params: stubs.Params(p)}
+		}
+		response := new(stubs.Response)
+		client.Call(stubs.ProcessTurn, request, response)
+		ch <- *response
+	}
 
 }
 
@@ -105,9 +111,9 @@ func distributor(p Params, c distributorChannels) {
 			select {
 			case <-ticker.C:
 				request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
-				response := new(stubs.CellCount)
+				response := new(stubs.Response)
 				client.Call(stubs.AliveCellsCount, request, response)
-				c.events <- AliveCellsCount{CompletedTurns: response.Turn, CellsCount: response.CellsCount}
+				c.events <- AliveCellsCount{CompletedTurns: response.CurrentTurn, CellsCount: response.CellCount}
 			}
 		}
 	}()
@@ -120,12 +126,18 @@ func distributor(p Params, c distributorChannels) {
 		select {
 		// If we receive a keypress
 		case res := <-ch_response:
-			// TODO: Maybe use res.CurrentTurn rather than assuming p.Turns
-			ticker.Stop()
-			quit = true
-			c.events <- FinalTurnComplete{CompletedTurns: res.CurrentTurn, Alive: calculateAliveCells(p, res.State)}
-			c.events <- StateChange{res.CurrentTurn, Quitting}
-			writeImage(p, c, res.State, res.CurrentTurn)
+			if res.State != nil {
+				ticker.Stop()
+				quit = true
+				c.events <- FinalTurnComplete{CompletedTurns: res.CurrentTurn, Alive: calculateAliveCells(p, res.State)}
+				c.events <- StateChange{res.CurrentTurn, Quitting}
+				writeImage(p, c, res.State, res.CurrentTurn)
+			} else {
+				c.events <- TurnComplete{CompletedTurns: res.CurrentTurn}
+				for _, cell := range res.FlippedCells {
+					c.events <- CellFlipped{CompletedTurns: res.CurrentTurn, Cell: cell}
+				}
+			}
 		case key := <-c.keyPresses:
 			switch key {
 			// q: quit, change state to Quitting

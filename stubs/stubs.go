@@ -1,6 +1,8 @@
 package stubs
 
-var ProcessTurns = "Gol.ProcessTurns"
+import "uk.ac.bris.cs/gameoflife/util"
+
+var ProcessTurn = "Gol.ProcessTurn"
 var AliveCellsCount = "Gol.AliveCellsCount"
 var ProcessSlice = "Worker.ProcessSlice"
 var ClientQuit = "Gol.ClientQuit"
@@ -17,14 +19,11 @@ type Params struct {
 }
 
 type Response struct {
-	State       [][]uint8
-	CurrentTurn int
-	Paused      bool
-}
-
-type CellCount struct {
-	Turn       int
-	CellsCount int
+	State        [][]uint8
+	FlippedCells []util.Cell
+	CurrentTurn  int
+	CellCount    int
+	Paused       bool
 }
 
 type Request struct {

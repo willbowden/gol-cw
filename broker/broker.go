@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"uk.ac.bris.cs/gameoflife/stubs"
+	"uk.ac.bris.cs/gameoflife/util"
+
 	//	"fmt"
 
 	"net"
@@ -29,20 +31,20 @@ func countAliveCells(p stubs.Params, world [][]byte) int {
 	return count
 }
 
-func callWorker(y1, y2 int, p stubs.Params, world [][]uint8, ch chan<- [][]uint8, client *rpc.Client) {
+func callWorker(y1, y2 int, p stubs.Params, world [][]uint8, ch chan<- []util.Cell, client *rpc.Client) {
 	request := stubs.Request{CurrentState: world, Params: stubs.Params(p), Y1: y1, Y2: y2}
 	response := new(stubs.Response)
 	client.Call(stubs.ProcessSlice, request, response)
-	ch <- response.State
+	ch <- response.FlippedCells
 }
 
-func calculateNewState(p stubs.Params, g *Gol) [][]uint8 {
+func (g *Gol) calculateNewState(p stubs.Params) []util.Cell {
 	// Make new 2D array for the next frame
-	var newFrame [][]uint8
+	var flippedCells []util.Cell
 
-	channels := make([]chan [][]uint8, p.Threads)
+	channels := make([]chan []util.Cell, p.Threads)
 	for v := range channels {
-		channels[v] = make(chan [][]uint8)
+		channels[v] = make(chan []util.Cell)
 	}
 
 	// Values for dividing up world between n threads
@@ -63,13 +65,18 @@ func calculateNewState(p stubs.Params, g *Gol) [][]uint8 {
 	}
 
 	for _, channel := range channels {
-		newSlice := <-channel
-		newFrame = append(newFrame, newSlice...)
+		newSection := <-channel
+		flippedCells = append(flippedCells, newSection...)
 	}
 
-	return newFrame
+	g.lock.Lock()
+	for _, cell := range flippedCells {
+		g.state[cell.Y][cell.X] = 255 - g.state[cell.Y][cell.X]
+	}
+	g.lock.Unlock()
 
-	// Send complete new frame back to RPC func
+	return flippedCells
+
 }
 
 // Returns a function allowing us to access data without risk of overwriting
@@ -99,46 +106,69 @@ type Gol struct {
 	wg      sync.WaitGroup
 }
 
-// calculate new state
-func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
+func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	req.Params.Threads = 2
-
-	g.quit = false
-
-	// If we're not paused because of a client quit, start from new state.
-	// Otherwise, it will just resume processing on the already existing state
-	if g.pause == false {
+	if req.CurrentState != nil {
 		g.state = req.CurrentState
 		g.turn = 0
 	}
 
-	// Maybe find proper way to say g.turn = g.turn?
-	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
-		newFrame := calculateNewState(req.Params, g)
-		g.lock.Lock()
-		g.state = newFrame
-		g.lock.Unlock()
+	cellsFlipped := g.calculateNewState(req.Params)
+	res.FlippedCells = cellsFlipped
+
+	res.CurrentTurn = g.turn
+
+	if g.turn == req.Params.Turns-1 {
+		res.State = g.state
 	}
 
-	res.State = g.state
-	res.CurrentTurn = g.turn
+	g.turn += 1
 
 	return
 }
 
+// calculate new state
+// func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
+// 	g.wg.Add(1)
+// 	defer g.wg.Done()
+
+// 	req.Params.Threads = 2
+
+// 	g.quit = false
+
+// 	// If we're not paused because of a client quit, start from new state.
+// 	// Otherwise, it will just resume processing on the already existing state
+// 	if g.pause == false {
+// 		g.state = req.CurrentState
+// 		g.turn = 0
+// 	}
+
+// 	// Maybe find proper way to say g.turn = g.turn?
+// 	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
+// 		newFrame := calculateNewState(req.Params, g)
+// 		g.lock.Lock()
+// 		g.state = newFrame
+// 		g.lock.Unlock()
+// 	}
+
+// 	res.State = g.state
+// 	res.CurrentTurn = g.turn
+
+// 	return
+// }
+
 // alive cells count called by the distributor
-func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err error) {
+func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
 	g.lock.Lock()
 	count := countAliveCells(req.Params, g.state)
 	g.lock.Unlock()
-	res.Turn = g.turn
-	res.CellsCount = count
+	res.CurrentTurn = g.turn
+	res.CellCount = count
 
 	return
 }
@@ -236,7 +266,7 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	instances := []string{"54.157.203.179:8030", "54.161.69.22:8030"}
+	instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"uk.ac.bris.cs/gameoflife/stubs"
+	"uk.ac.bris.cs/gameoflife/util"
 )
 
 // calculate number of neighbours around a cell at given coords, wrapping around world edges
@@ -28,34 +29,27 @@ func getNumNeighbours(y, x int, world [][]uint8, p stubs.Params) int {
 }
 
 // worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
-func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
-	sliceHeight := (y2 - y1) + 1
-	var newSlice = make([][]uint8, sliceHeight)
-	for i := 0; i < sliceHeight; i++ {
-		newSlice[i] = make([]uint8, p.ImageWidth)
-	}
+func worker(y1, y2 int, world [][]uint8, p stubs.Params) []util.Cell {
+	var flippedCells []util.Cell
 	for y := y1; y <= y2; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
 			neighbours := getNumNeighbours(y, x, world, p)
 			cellValue := world[y][x]
 			switch {
 			// <2 neighbours, cell dies
-			case neighbours < 2:
-				newSlice[y-y1][x] = 0
+			case neighbours < 2 && cellValue == 255:
+				flippedCells = append(flippedCells, util.Cell{X: x, Y: y - y1})
 			// >3 neighbours, live cell dies
 			case neighbours > 3 && cellValue == 255:
-				newSlice[y-y1][x] = 0
+				flippedCells = append(flippedCells, util.Cell{X: x, Y: y - y1})
 			// exactly 3 neighbours, dead cell comes alive
 			case neighbours == 3 && cellValue == 0:
-				newSlice[y-y1][x] = 255
-			// otherwise send current cell value to new state
-			default:
-				newSlice[y-y1][x] = cellValue
+				flippedCells = append(flippedCells, util.Cell{X: x, Y: y - y1})
 			}
 		}
 	}
 
-	return newSlice
+	return flippedCells
 }
 
 // Add rpc function(s)
@@ -70,8 +64,8 @@ type Worker struct {
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
 	w.wg.Add(1)
 	defer w.wg.Done()
-	newSlice := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
-	res.State = newSlice
+	flippedCells := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
+	res.FlippedCells = flippedCells
 	return
 }
 
