@@ -2,6 +2,7 @@ package gol
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"uk.ac.bris.cs/gameoflife/util"
@@ -17,14 +18,14 @@ type distributorChannels struct {
 	keyPresses <-chan rune
 }
 
-// Returns a function allowing us to access data without risk of overwriting
+// Returns a function (like a getter) allowing us to access data without risk of overwriting
 func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 	return func(y, x int) uint8 {
 		return world[y][x]
 	}
 }
 
-// Check all cells and add live ones to output list
+// Find all alive cells and return a list of live cells
 func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 	var liveCells []util.Cell
 	for y, row := range world {
@@ -55,7 +56,11 @@ func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn in
 	sliceSize := p.ImageHeight / p.Threads
 	remainder := p.ImageHeight % p.Threads
 
+	// Add waitgroup to ensure assembly in correct order
+	var wg sync.WaitGroup
+
 	for i, channel := range channels {
+		wg.Add(1)
 		i += 1
 		// Calculate y bounds for thread
 		y1 := (i - 1) * sliceSize
@@ -63,10 +68,19 @@ func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn in
 		if i == p.Threads {
 			y2 += remainder
 		}
+
 		// Start worker on its slice
-		go worker(y1, y2, immutableWorld, c.events, channel, p, turn)
+		go func(y1, y2 int, channel chan<- [][]uint8) {
+			defer wg.Done()
+			worker(y1, y2, immutableWorld, c.events, channel, p, turn)
+		}(y1, y2, channel)
 
 	}
+
+	// Wait for the goroutines to finish
+	go func() {
+		wg.Wait()
+	}()
 
 	// Receive new world data from workers and reassemble in correct order
 	for _, channel := range channels {
@@ -95,6 +109,7 @@ func writeImage(c distributorChannels, filename string, world [][]uint8, p Param
 	c.events <- ImageOutputComplete{CompletedTurns: turn, Filename: filename}
 }
 
+// Pause Keypress
 func handlePause(c distributorChannels, turn int) {
 	// Continuously wait for a 'p' keypress before returning from the function.
 	select {
