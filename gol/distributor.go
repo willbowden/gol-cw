@@ -2,7 +2,6 @@ package gol
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"uk.ac.bris.cs/gameoflife/util"
@@ -56,11 +55,7 @@ func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn in
 	sliceSize := p.ImageHeight / p.Threads
 	remainder := p.ImageHeight % p.Threads
 
-	// Add waitgroup to ensure assembly in correct order
-	var wg sync.WaitGroup
-
 	for i, channel := range channels {
-		wg.Add(1)
 		i += 1
 		// Calculate y bounds for thread
 		y1 := (i - 1) * sliceSize
@@ -70,17 +65,9 @@ func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn in
 		}
 
 		// Start worker on its slice
-		go func(y1, y2 int, channel chan<- [][]uint8) {
-			defer wg.Done()
-			worker(y1, y2, immutableWorld, c.events, channel, p, turn)
-		}(y1, y2, channel)
+		go worker(y1, y2, immutableWorld, c.events, channel, p, turn)
 
 	}
-
-	// Wait for the goroutines to finish
-	go func() {
-		wg.Wait()
-	}()
 
 	// Receive new world data from workers and reassemble in correct order
 	for _, channel := range channels {
@@ -198,6 +185,8 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
+
+	//wg.Wait()
 
 	// Stop ticker and output final state of world as image
 	ticker.Stop()
