@@ -103,11 +103,15 @@ func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	req.Params.Threads = 2
-
-	if req.CurrentState != nil {
+	req.Params.Threads = 4
+	// If we're receiving a first-time call from distributor, and we're not paused, start from the new state.
+	if req.CurrentState != nil && g.pause == false {
 		g.state = req.CurrentState
 		g.turn = 0
+		// Otherwise we are picking up from a pause, so just resume from the existing state
+		// Also, return the current state once so the distributor can display GUI correctly.
+	} else if req.CurrentState != nil {
+		res.State = g.state
 	}
 
 	cellsFlipped := g.calculateNewState(req.Params)
@@ -119,7 +123,7 @@ func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 		res.State = g.state
 	}
 
-	g.turn += 1
+	g.turn++
 
 	return
 }
@@ -261,7 +265,8 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
+	// instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
+	instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {

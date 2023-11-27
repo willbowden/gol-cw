@@ -14,14 +14,24 @@ import (
 // calculate number of neighbours around a cell at given coords, wrapping around world edges
 func getNumNeighbours(y, x int, world [][]uint8, p stubs.Params) int {
 	numNeighbours := 0
-	// Look 1 to left, right, above and below the chosen cell
-	for yInc := -1; yInc <= 1; yInc++ {
-		var testY int = (y + yInc + p.ImageHeight) % p.ImageHeight
-		for xInc := -1; xInc <= 1; xInc++ {
-			var testX int = (x + xInc + p.ImageWidth) % p.ImageWidth
-			if (testX != x || testY != y) && world[testY][testX] == 255 {
-				numNeighbours++
-			}
+	// Look 1 to left, right, above, below and diagonally to the chosen cell
+	offsets := []util.Cell{
+		{X: -1, Y: -1},
+		{X: -1, Y: 0},
+		{X: -1, Y: 1},
+		{X: 0, Y: -1},
+		{X: 0, Y: 1},
+		{X: 1, Y: -1},
+		{X: 1, Y: 0},
+		{X: 1, Y: 1},
+	}
+
+	for _, offset := range offsets {
+		actualRow := (y + offset.X) & (p.ImageHeight - 1)
+		actualCol := (x + offset.Y) & (p.ImageWidth - 1)
+
+		if world[actualRow][actualCol] == 0xFF {
+			numNeighbours++
 		}
 	}
 

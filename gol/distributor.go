@@ -102,6 +102,9 @@ func distributor(p Params, c distributorChannels) {
 		for x := 0; x < p.ImageWidth; x++ {
 			cell := <-c.ioInput
 			world[y][x] = cell
+			if cell == 255 {
+				c.events <- CellFlipped{CompletedTurns: 0, Cell: util.Cell{X: x, Y: y}}
+			}
 		}
 	}
 
@@ -124,20 +127,34 @@ func distributor(p Params, c distributorChannels) {
 
 	for quit == false {
 		select {
-		// If we receive a keypress
 		case res := <-ch_response:
-			if res.State != nil {
+			// If we're receiving no state, we're just receiving flipped cells
+			if res.State == nil {
+				// Flip all the cells on the GUI that have been flipped in the world
+				c.events <- TurnComplete{CompletedTurns: res.CurrentTurn}
+				for _, cell := range res.FlippedCells {
+					c.events <- CellFlipped{CompletedTurns: res.CurrentTurn, Cell: cell}
+				}
+				// If we're receiving state and we haven't finished all turns, we're resuming from a pause
+			} else if res.State != nil && res.CurrentTurn != p.Turns {
+				// So we need to make sure the GUI reflects the current state, rather than from the loaded image
+				for row := range res.State {
+					for col := range res.State[row] {
+						if res.State[row][col] != world[row][col] {
+							c.events <- CellFlipped{CompletedTurns: res.CurrentTurn, Cell: util.Cell{X: col, Y: row}}
+						}
+					}
+				}
+				// Otherwise we're receiving a new state because execution has finished
+			} else {
+				// So quit, and write the final image
 				ticker.Stop()
 				quit = true
 				c.events <- FinalTurnComplete{CompletedTurns: res.CurrentTurn, Alive: calculateAliveCells(p, res.State)}
 				c.events <- StateChange{res.CurrentTurn, Quitting}
 				writeImage(p, c, res.State, res.CurrentTurn)
-			} else {
-				c.events <- TurnComplete{CompletedTurns: res.CurrentTurn}
-				for _, cell := range res.FlippedCells {
-					c.events <- CellFlipped{CompletedTurns: res.CurrentTurn, Cell: cell}
-				}
 			}
+			// If we receive a keypress
 		case key := <-c.keyPresses:
 			switch key {
 			// q: quit, change state to Quitting
