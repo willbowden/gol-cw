@@ -15,16 +15,16 @@ func BenchmarkGol(b *testing.B) {
 	// 1 to 16 threads / workers
 	for threads := 1; threads <= 16; threads++ {
 
-		// disable output gol
-		os.Stdout = nil // Disable all program output apart from benchmark results
+		// Disable GOL output
+		os.Stdout = nil
 		p := gol.Params{
-			// benchLength = each benchmark, threads = the for loop
+			// benchLength = each benchmark
 			Turns:       benchLength,
 			Threads:     threads,
 			ImageWidth:  512,
 			ImageHeight: 512,
 		}
-		// unique name for a specific benchmark
+		// Unique name for each benchmark
 		name := fmt.Sprintf("%dx%dx%d-%d", p.ImageWidth, p.ImageHeight, p.Turns, p.Threads)
 
 		b.Run(name, func(b *testing.B) {

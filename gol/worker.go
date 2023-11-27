@@ -4,7 +4,7 @@ import (
 	"uk.ac.bris.cs/gameoflife/util"
 )
 
-// calculate number of neighbours around a cell at given coords, wrapping around world edges
+// calculate number of neighbours around a cell at given coords, wrapping around world edges using modulus function
 func getNumNeighbours(y, x int, world func(y, x int) uint8, p Params) int {
 	numNeighbours := 0
 	// Look 1 to left, right, above and below the chosen cell
@@ -21,21 +21,24 @@ func getNumNeighbours(y, x int, world func(y, x int) uint8, p Params) int {
 	return numNeighbours
 }
 
-// setCell() checks if a cell's new value is different to its current one, and if so, sends an event
-//	so that the screen renders the change
+// Sends change in cell value to events to alert and render on the output
 func setCell(y, x int, world func(y, x int) uint8, newValue uint8, events chan<- Event, turn int) {
 	if world(y, x) != newValue {
 		events <- CellFlipped{CompletedTurns: turn, Cell: util.Cell{X: x, Y: y}}
 	}
 }
 
-// worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
+// Calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
 func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<- [][]uint8, p Params, turn int) {
 	sliceHeight := (y2 - y1) + 1
 	var newSlice = make([][]uint8, sliceHeight)
+
+	// Create empty new slice
 	for i := 0; i < sliceHeight; i++ {
 		newSlice[i] = make([]uint8, p.ImageWidth)
 	}
+
+	// Iterate each cell
 	for y := y1; y <= y2; y++ {
 		for x := 0; x < p.ImageWidth; x++ {
 			neighbours := getNumNeighbours(y, x, world, p)
@@ -59,6 +62,6 @@ func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<
 			}
 		}
 	}
-	// send new world slice down output channel
+	// Send new world slice down output channel
 	c <- newSlice
 }
