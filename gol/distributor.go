@@ -40,6 +40,7 @@ func calculateAliveCells(p Params, world [][]byte) []util.Cell {
 
 // calculateNewState divides the image up by thread count, then reassembles the workers slices
 func calculateNewState(p Params, c distributorChannels, world [][]uint8, turn int, ch chan<- [][]uint8) {
+
 	// Make new 2D array for the next frame
 	var newFrame [][]uint8
 
@@ -139,34 +140,31 @@ func distributor(p Params, c distributorChannels) {
 	turn := 0
 
 	// Start a ticker to output the number of live cells every 2 seconds
-	ticker := time.NewTicker(2000 * time.Millisecond)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				c.events <- AliveCellsCount{turn, len(calculateAliveCells(p, world))}
-			}
-		}
-	}()
 
 	// Format filename for PGM image outputs
 	outFilename := fmt.Sprintf("%vx%vx%v", p.ImageWidth, p.ImageHeight, p.Turns)
 
 	// Channel to receive new state output from workers
 	newFrames := make(chan [][]uint8)
+
+	ticker := time.NewTicker(2000 * time.Millisecond)
+
 	quit := false
 
-	// Added waitgroup to ensure no race conditions when calculateNewState being called
+	// Start calculation of next frame
+	go calculateNewState(p, c, world, turn, newFrames)
 
-	for turn = 0; turn < p.Turns && !quit; turn++ {
-		// Start calculation of next frame
-		go calculateNewState(p, c, world, turn, newFrames)
+	for turn < p.Turns && !quit {
 		// Await reception from channels
 		select {
+		case <-ticker.C:
+			c.events <- AliveCellsCount{turn, len(calculateAliveCells(p, world))}
 		// If next frame is finished, update world & send turn complete event
 		case nextFrame := <-newFrames:
 			world = nextFrame
 			c.events <- TurnComplete{CompletedTurns: turn}
+			turn++
+			go calculateNewState(p, c, world, turn, newFrames)
 		// If we receive a keypress
 		case key := <-c.keyPresses:
 			switch key {
@@ -204,5 +202,4 @@ func distributor(p Params, c distributorChannels) {
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
 	close(newFrames)
-
 }

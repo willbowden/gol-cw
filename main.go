@@ -48,7 +48,6 @@ func main() {
 	fmt.Println("Threads:", params.Threads)
 	fmt.Println("Width:", params.ImageWidth)
 	fmt.Println("Height:", params.ImageHeight)
-
 	keyPresses := make(chan rune, 10)
 	events := make(chan gol.Event, 1000)
 

@@ -30,6 +30,7 @@ func setCell(y, x int, world func(y, x int) uint8, newValue uint8, events chan<-
 
 // Calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
 func worker(y1, y2 int, world func(y, x int) uint8, events chan<- Event, c chan<- [][]uint8, p Params, turn int) {
+
 	sliceHeight := (y2 - y1) + 1
 	var newSlice = make([][]uint8, sliceHeight)
 
