@@ -8,7 +8,7 @@ data = pd.read_csv('results.csv', header=0, names=['name', 'time', 'range'])
 data['time'] /= 1e+9
 
 data['threads'] = data['name'].str.extract('Gol/\d+x\d+x\d+-(\d+)-\d+').apply(pd.to_numeric)
-data['cpu_cores'] = data['name'].str.extract('Gol/\d+x\d+x\d+-(\d+)-\d+').apply(pd.to_numeric)
+data['cpu_cores'] = data['name'].str.extract('Gol/\d+x\d+x\d+-\d+-(\d+)').apply(pd.to_numeric)
 
 # Print the DataFrame for verification
 print(data)
