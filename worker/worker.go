@@ -74,6 +74,7 @@ type Worker struct {
 func (w *Worker) ProcessSlice(req stubs.Request, res *stubs.Response) (err error) {
 	w.wg.Add(1)
 	defer w.wg.Done()
+	fmt.Println("WORKING")
 	flippedCells := worker(req.Y1, req.Y2, req.CurrentState, req.Params)
 	res.FlippedCells = flippedCells
 	return

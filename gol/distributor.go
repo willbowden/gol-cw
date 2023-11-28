@@ -89,9 +89,6 @@ func distributor(p Params, c distributorChannels) {
 	client, _ := rpc.Dial("tcp", flag_server)
 	defer client.Close()
 
-	// Hardcode number of threads since AWS nodes aren't dynamic
-	p.Threads = 4
-
 	ch_response := make(chan stubs.Response)
 
 	// Create a 2D slice to store the world.

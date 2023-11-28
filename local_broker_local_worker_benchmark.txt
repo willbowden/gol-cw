@@ -1,0 +1,3 @@
+BenchmarkGol/512x512x1000-1-16         	       1	9986329913 ns/op
+BenchmarkGol/512x512x1000-2-16         	       1	6649238573 ns/op
+BenchmarkGol/512x512x1000-4-16         	       1	4326599895 ns/op

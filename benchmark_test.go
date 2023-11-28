@@ -13,7 +13,7 @@ const benchLength = 1000
 
 func BenchmarkGol(b *testing.B) {
 	// 1 to 16 threads / workers
-	for threads := 1; threads <= 16; threads++ {
+	for threads := 16; threads <= 16; threads++ {
 
 		// Disable GOL output
 		os.Stdout = nil
