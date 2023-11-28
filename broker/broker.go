@@ -236,10 +236,10 @@ func main() {
 	flag.Parse()
 
 	// AWS Node IPs
-	instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
+	// instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
 
 	// Local IPs for testing
-	// instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
+	instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
 
 	connections := []*rpc.Client{}
 
