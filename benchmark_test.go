@@ -18,7 +18,7 @@ func BenchmarkGol(b *testing.B) {
 	p := gol.Params{
 		// benchLength = each benchmark
 		Turns:       benchLength,
-		Threads:     1,
+		Threads:     2,
 		ImageWidth:  512,
 		ImageHeight: 512,
 	}
