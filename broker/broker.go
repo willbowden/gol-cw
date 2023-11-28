@@ -106,19 +106,19 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 
 	req.Params.Threads = 2
 
-	g.lock.Lock()
-	g.quit = false
-	g.pause = false
-	g.lock.Unlock()
-
-	// If we're not paused because of a client quit, start from new state.
+	// If the quit flag is false, we're not resuming from a client-quit
 	// Otherwise, it will just resume processing on the already existing state
-	if !g.pause {
+	if !g.quit {
 		g.lock.Lock()
 		g.state = req.CurrentState
 		g.turn = 0
 		g.lock.Unlock()
 	}
+
+	g.lock.Lock()
+	g.quit = false
+	g.pause = false
+	g.lock.Unlock()
 
 	// Maybe find proper way to say g.turn = g.turn?
 	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
@@ -185,8 +185,8 @@ func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
 	g.quit = true
+	g.pause = false
 	res.CurrentTurn = g.turn
-	g.pause = true
 	g.lock.Unlock()
 
 	return
