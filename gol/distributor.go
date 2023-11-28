@@ -85,7 +85,7 @@ func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Respo
 
 // distributor acts as the local controller
 func distributor(p Params, c distributorChannels) {
-	flag_server := "127.0.0.1:8030"
+	flag_server := "44.201.201.88:8030"
 	client, _ := rpc.Dial("tcp", flag_server)
 	defer client.Close()
 
