@@ -104,7 +104,7 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	req.Params.Threads = 2
+	// req.Params.Threads = 2
 
 	// If the quit flag is false, we're not resuming from a client-quit
 	// Otherwise, it will just resume processing on the already existing state
