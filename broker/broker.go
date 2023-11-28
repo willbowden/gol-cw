@@ -248,7 +248,13 @@ func main() {
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
-		client, _ := rpc.Dial("tcp", instance)
+		client, err := rpc.Dial("tcp", instance)
+		if err != nil {
+			fmt.Println("Error cannot connect : "+instance+" to broker: ", err)
+			client.Close()
+			return
+		}
+
 		connections = append(connections, client)
 	}
 
