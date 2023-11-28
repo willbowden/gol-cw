@@ -114,16 +114,15 @@ func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	res.FlippedCells = cellsFlipped
 
 	g.lock.Lock()
+	g.turn++
 	res.CurrentTurn = g.turn
 	g.lock.Unlock()
 
-	if g.turn == req.Params.Turns-1 {
+	if g.turn >= req.Params.Turns {
 		g.lock.Lock()
 		res.State = g.state
 		g.lock.Unlock()
 	}
-
-	g.turn++
 
 	for g.pause {
 		// If we're paused, wait until we're unpaused
@@ -236,10 +235,10 @@ func main() {
 	flag.Parse()
 
 	// AWS Node IPs
-	instances := []string{"172.31.20.251:8030", "172.31.20.121:8030", "172.31.85.10:8030", "172.31.95.254:8030"}
+	// instances := []string{"3.89.204.130:8030", "54.237.230.235:8030"}
 
 	// Local IPs for testing
-	// instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
+	instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
 
 	connections := []*rpc.Client{}
 
