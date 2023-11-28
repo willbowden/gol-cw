@@ -94,6 +94,8 @@ func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
+	fmt.Println("Processing turn", g.turn)
+
 	// req.Params.Threads = 4
 	// If we're receiving a first-time call from distributor, and we're not paused, start from the new state.
 	if req.CurrentState != nil && g.pause == false {
