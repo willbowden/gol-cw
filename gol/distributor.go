@@ -64,6 +64,11 @@ func handlePause(c distributorChannels, client *rpc.Client) {
 
 func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Response) {
 
+	if p.Turns == 0 {
+		response := stubs.Response{CurrentTurn: 0, State: world}
+		ch <- response
+	}
+
 	for turn := 0; turn < p.Turns; turn++ {
 		var request stubs.Request
 		if turn == 0 {
@@ -83,6 +88,9 @@ func distributor(p Params, c distributorChannels) {
 	flag_server := "127.0.0.1:8030"
 	client, _ := rpc.Dial("tcp", flag_server)
 	defer client.Close()
+
+	// Hardcode number of threads since AWS nodes aren't dynamic
+	p.Threads = 4
 
 	ch_response := make(chan stubs.Response)
 

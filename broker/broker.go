@@ -114,16 +114,15 @@ func (g *Gol) ProcessTurn(req stubs.Request, res *stubs.Response) (err error) {
 	res.FlippedCells = cellsFlipped
 
 	g.lock.Lock()
+	g.turn++
 	res.CurrentTurn = g.turn
 	g.lock.Unlock()
 
-	if g.turn == req.Params.Turns-1 {
+	if g.turn >= req.Params.Turns {
 		g.lock.Lock()
 		res.State = g.state
 		g.lock.Unlock()
 	}
-
-	g.turn++
 
 	for g.pause {
 		// If we're paused, wait until we're unpaused
