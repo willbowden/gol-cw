@@ -75,7 +75,14 @@ func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Respo
 // distributor acts as the local controller
 func distributor(p Params, c distributorChannels) {
 	flag_server := "127.0.0.1:8030"
-	client, _ := rpc.Dial("tcp", flag_server)
+	client, err := rpc.Dial("tcp", flag_server)
+
+	if err != nil {
+		fmt.Println("Error, distributor cannot connect to broker: ", err)
+		client.Close()
+		return
+
+	}
 	defer client.Close()
 
 	ch_response := make(chan stubs.Response)
