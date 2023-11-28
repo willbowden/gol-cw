@@ -106,13 +106,18 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 
 	req.Params.Threads = 2
 
+	g.lock.Lock()
 	g.quit = false
+	g.pause = false
+	g.lock.Unlock()
 
 	// If we're not paused because of a client quit, start from new state.
 	// Otherwise, it will just resume processing on the already existing state
-	if g.pause == false {
+	if !g.pause {
+		g.lock.Lock()
 		g.state = req.CurrentState
 		g.turn = 0
+		g.lock.Unlock()
 	}
 
 	// Maybe find proper way to say g.turn = g.turn?
@@ -121,10 +126,15 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 		g.lock.Lock()
 		g.state = newFrame
 		g.lock.Unlock()
+		for g.pause {
+			// If paused, halt execution and spin until unpaused
+		}
 	}
 
+	g.lock.Lock()
 	res.State = g.state
 	res.CurrentTurn = g.turn
+	g.lock.Unlock()
 
 	return
 }
@@ -134,11 +144,11 @@ func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err erro
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	g.lock.Lock()
 	count := countAliveCells(req.Params, g.state)
-	g.lock.Unlock()
+	g.lock.Lock()
 	res.Turn = g.turn
 	res.CellsCount = count
+	g.lock.Unlock()
 
 	return
 }
@@ -149,8 +159,8 @@ func (g *Gol) Screenshot(req stubs.Request, res *stubs.Response) (err error) {
 
 	g.lock.Lock()
 	res.State = g.state
-	g.lock.Unlock()
 	res.CurrentTurn = g.turn
+	g.lock.Unlock()
 
 	return
 }
@@ -159,16 +169,11 @@ func (g *Gol) PauseBroker(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	if g.pause == false {
-		g.lock.Lock()
-		g.pause = true
-	} else {
-		g.lock.Unlock()
-		g.pause = false
-	}
-
+	g.lock.Lock()
+	g.pause = !g.pause
 	res.CurrentTurn = g.turn
 	res.Paused = g.pause
+	g.lock.Unlock()
 
 	return
 }
@@ -180,9 +185,9 @@ func (g *Gol) ClientQuit(req stubs.Request, res *stubs.Response) (err error) {
 	g.lock.Lock()
 	res.State = g.state
 	g.quit = true
-	g.lock.Unlock()
 	res.CurrentTurn = g.turn
 	g.pause = true
+	g.lock.Unlock()
 
 	return
 }
@@ -236,7 +241,10 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	instances := []string{"54.157.203.179:8030", "54.161.69.22:8030"}
+	// AWS node IPs
+	// instances := []string{"54.157.203.179:8030", "54.161.69.22:8030"}
+	// Local IPs for testing
+	instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
