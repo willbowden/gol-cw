@@ -164,7 +164,9 @@ func distributor(p Params, c distributorChannels) {
 			world = nextFrame
 			c.events <- TurnComplete{CompletedTurns: turn}
 			turn++
-			go calculateNewState(p, c, world, turn, newFrames)
+			if turn < p.Turns {
+				go calculateNewState(p, c, world, turn, newFrames)
+			}
 		// If we receive a keypress
 		case key := <-c.keyPresses:
 			switch key {
@@ -201,5 +203,5 @@ func distributor(p Params, c distributorChannels) {
 
 	// Close the channel to stop the SDL goroutine gracefully. Removing may cause deadlock.
 	close(c.events)
-	close(newFrames)
+	// close(newFrames)
 }
