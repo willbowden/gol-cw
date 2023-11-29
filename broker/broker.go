@@ -104,7 +104,7 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	req.Params.Threads = 2
+	// req.Params.Threads = 2
 
 	// If the quit flag is false, we're not resuming from a client-quit
 	// Otherwise, it will just resume processing on the already existing state
@@ -242,7 +242,7 @@ func main() {
 	flag.Parse()
 
 	// AWS node IPs
-	instances := []string{"44.207.1.60:8030", "3.84.141.175:8030"}
+	instances := []string{"172.31.20.251:8030", "172.31.20.121:8030", "172.31.85.10:8030", "172.31.95.254:8030"}
 	// Local IPs for testing
 	//instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
 	connections := []*rpc.Client{}
