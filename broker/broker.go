@@ -258,7 +258,12 @@ func main() {
 		connections = append(connections, client)
 	}
 
-	listener, _ := net.Listen("tcp", ":"+*pAddr)
+	listener, err := net.Listen("tcp", ":"+*pAddr)
+	if err != nil {
+		fmt.Println("Error cannot listen on port: ", err)
+		listener.Close()
+		return
+	}
 	g := Gol{clients: connections, signal: make(chan string, 1)}
 	rpc.Register(&g)
 	fmt.Println("Server open on port", *pAddr)
