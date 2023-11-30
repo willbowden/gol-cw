@@ -237,7 +237,7 @@ func main() {
 	flag.Parse()
 
 	// AWS Node IPs
-	instances := []string{"54.90.193.178:8030", "54.90.150.16:8030", "44.204.162.141:8030", "44.203.193.250:8030"}
+	instances := []string{"172.31.20.251:8030", "172.31.20.121:8030"}
 
 	// Local IPs for testing
 
