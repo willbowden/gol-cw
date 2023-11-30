@@ -15,7 +15,6 @@ import (
 )
 
 // GOL Logic as in Parallel Implementation
-
 func countAliveCells(p stubs.Params, world [][]byte) int {
 	count := 0
 	for _, row := range world {
@@ -25,7 +24,6 @@ func countAliveCells(p stubs.Params, world [][]byte) int {
 			}
 		}
 	}
-
 	return count
 }
 
@@ -79,15 +77,7 @@ func makeImmutableWorld(world [][]uint8) func(y, x int) uint8 {
 	}
 }
 
-// distributor divides the work between workers and interacts with other goroutines.
-// func engine(p stubs.Params, state [][]uint8) [][]uint8 {
-
-// 	// Channel to receive new state output from workers
-
-// }
-
 // RPC Requests
-
 type Gol struct {
 	state   [][]uint8
 	turn    int
@@ -99,12 +89,11 @@ type Gol struct {
 	wg      sync.WaitGroup
 }
 
-// calculate new state
 func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
 
-	// req.Params.Threads = 2
+	req.Params.Threads = 2
 
 	// If the quit flag is false, we're not resuming from a client-quit
 	// Otherwise, it will just resume processing on the already existing state
@@ -120,7 +109,6 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	g.pause = false
 	g.lock.Unlock()
 
-	// Maybe find proper way to say g.turn = g.turn?
 	for g.turn = g.turn; g.turn < req.Params.Turns && g.quit == false; g.turn++ {
 		newFrame := calculateNewState(req.Params, g)
 		g.lock.Lock()
@@ -139,7 +127,6 @@ func (g *Gol) ProcessTurns(req stubs.Request, res *stubs.Response) (err error) {
 	return
 }
 
-// alive cells count called by the distributor
 func (g *Gol) AliveCellsCount(req stubs.Request, res *stubs.CellCount) (err error) {
 	g.wg.Add(1)
 	defer g.wg.Done()
@@ -241,10 +228,8 @@ func main() {
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 
-	// AWS node IPs
+	// AWS node IPs - To be changed before running
 	instances := []string{"172.31.20.251:8030", "172.31.20.121:8030", "172.31.85.10:8030", "172.31.95.254:8030"}
-	// Local IPs for testing
-	//instances := []string{"127.0.0.1:8031", "127.0.0.1:8032", "127.0.0.1:8033", "127.0.0.1:8034"}
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
@@ -269,9 +254,11 @@ func main() {
 	fmt.Println("Server open on port", *pAddr)
 	defer listener.Close()
 	go g.startAccepting(listener)
+	// Awaits a kill signal
 	<-g.signal
 	fmt.Println("Server closing...")
 	g.wg.Wait()
+	// Hang up connections to workers before closing
 	for _, client := range g.clients {
 		client.Close()
 	}

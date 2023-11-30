@@ -64,6 +64,7 @@ func handlePause(c distributorChannels, turn int) {
 
 func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Response) {
 
+	// Initiate new responses and RPC dial to broker
 	request := stubs.Request{CurrentState: world, Params: stubs.Params(p)}
 	response := new(stubs.Response)
 	client.Call(stubs.ProcessTurns, request, response)
@@ -76,13 +77,13 @@ func startGOL(client *rpc.Client, world [][]uint8, p Params, ch chan stubs.Respo
 func distributor(p Params, c distributorChannels) {
 	flag_server := "44.201.201.88:8030"
 	client, err := rpc.Dial("tcp", flag_server)
-
 	if err != nil {
 		fmt.Println("Error, distributor cannot connect to broker: ", err)
 		client.Close()
 		return
 
 	}
+
 	defer client.Close()
 
 	ch_response := make(chan stubs.Response)
@@ -106,6 +107,7 @@ func distributor(p Params, c distributorChannels) {
 		}
 	}
 
+	// Initiate ticker within its own goroutine
 	ticker := time.NewTicker(2000 * time.Millisecond)
 	go func() {
 		for {
@@ -127,7 +129,6 @@ func distributor(p Params, c distributorChannels) {
 		select {
 		// If we receive a keypress
 		case res := <-ch_response:
-			// TODO: Maybe use res.CurrentTurn rather than assuming p.Turns
 			ticker.Stop()
 			quit = true
 			c.events <- FinalTurnComplete{CompletedTurns: res.CurrentTurn, Alive: calculateAliveCells(p, res.State)}
@@ -135,7 +136,7 @@ func distributor(p Params, c distributorChannels) {
 			writeImage(p, c, res.State, res.CurrentTurn)
 		case key := <-c.keyPresses:
 			switch key {
-			// q: quit, change state to Quitting
+			// q: quit, change state to Quitting & write image
 			case 'q':
 				ticker.Stop()
 				quit = true
@@ -161,6 +162,7 @@ func distributor(p Params, c distributorChannels) {
 					c.events <- StateChange{CompletedTurns: response.CurrentTurn, NewState: Executing}
 					fmt.Println("Continuing")
 				}
+			//k: kill, shut down all workers and broker
 			case 'k':
 				ticker.Stop()
 				quit = true
@@ -173,8 +175,6 @@ func distributor(p Params, c distributorChannels) {
 			}
 		}
 	}
-
-	// Execute all turns of the Game of Life.
 
 	// Make sure that the Io has finished any output before exiting.
 	c.ioCommand <- ioCheckIdle

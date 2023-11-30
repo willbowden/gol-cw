@@ -27,7 +27,7 @@ func getNumNeighbours(y, x int, world [][]uint8, p stubs.Params) int {
 	return numNeighbours
 }
 
-// worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
+// worker() calculates the next state of the world within its given y bounds, and returns the new chunk
 func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 	sliceHeight := (y2 - y1) + 1
 	var newSlice = make([][]uint8, sliceHeight)
@@ -58,7 +58,7 @@ func worker(y1, y2 int, world [][]uint8, p stubs.Params) [][]uint8 {
 	return newSlice
 }
 
-// Add rpc function(s)
+// RPC Functions
 
 type Worker struct {
 	wg       sync.WaitGroup
@@ -105,6 +105,7 @@ func (w *Worker) startAccepting(listener net.Listener) {
 }
 
 func main() {
+	// Initiate client connection
 	pAddr := flag.String("port", "8030", "Port to listen on")
 	flag.Parse()
 	listener, err := net.Listen("tcp", ":"+*pAddr)
@@ -113,6 +114,7 @@ func main() {
 		listener.Close()
 		return
 	}
+
 	w := Worker{listener: listener, signal: make(chan string, 1)}
 	rpc.Register(&w)
 	fmt.Println("Server open on port", *pAddr)
