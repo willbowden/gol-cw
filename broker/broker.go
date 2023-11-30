@@ -229,7 +229,7 @@ func main() {
 	flag.Parse()
 
 	// AWS node IPs - To be changed before running
-	instances := []string{"172.31.20.251:8030", "172.31.20.121:8030", "172.31.85.10:8030", "172.31.95.254:8030"}
+	instances := []string{"172.31.20.251:8030", "172.31.20.121:8030"}
 	connections := []*rpc.Client{}
 
 	for _, instance := range instances {
