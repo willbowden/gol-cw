@@ -38,7 +38,7 @@ func getNumNeighbours(y, x int, world [][]uint8, p stubs.Params) int {
 	return numNeighbours
 }
 
-// worker() calculates the next state of the world within its given y bounds, and returns the new chunk via a channel
+// worker() calculates the next state of the world within its given y bounds, and returns the new chunk
 func worker(y1, y2 int, world [][]uint8, p stubs.Params) []util.Cell {
 	var flippedCells []util.Cell
 	for y := y1; y <= y2; y++ {
